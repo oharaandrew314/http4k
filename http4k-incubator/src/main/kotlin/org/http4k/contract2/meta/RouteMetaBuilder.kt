@@ -1,0 +1,161 @@
+package org.http4k.contract2.meta
+
+import org.http4k.contract2.Appendable
+import org.http4k.contract2.security.Security
+import org.http4k.core.ContentType
+import org.http4k.core.Method
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
+import org.http4k.core.with
+import org.http4k.format.AutoContentNegotiator
+import org.http4k.lens.BiDiBodyLens
+import org.http4k.lens.BodyLens
+import org.http4k.lens.Header
+import org.http4k.lens.Lens
+
+
+class RouteMetaBuilder {
+    var summary: String = "<unknown>"
+    var description: String? = null
+    val tags = Appendable<Tag>()
+    val produces = Appendable<ContentType>()
+    val consumes = Appendable<ContentType>()
+    val headers = Appendable<Lens<Request, *>>()
+    val queries = Appendable<Lens<Request, *>>()
+    val cookies = Appendable<Lens<Request, *>>()
+    var operationId: String? = null
+    var security: Security? = null
+    var preFlightExtraction: PreFlightExtraction? = PreFlightExtraction.All
+    var described: Boolean = true
+
+    internal val requests = Appendable<HttpMessageMeta<Request>>()
+    internal val responses = Appendable<HttpMessageMeta<Response>>()
+    internal var requestBody: BodyLens<*>? = null
+    internal var deprecated: Boolean = false
+
+    @JvmName("returningResponse")
+    fun returning(vararg descriptionToResponse: Pair<String, Response>) =
+        descriptionToResponse.forEach { (description, status) -> returning(ResponseMeta(description, status)) }
+
+    /**
+     * Add possible response metadata to this Route. A route supports multiple possible responses.
+     */
+    @JvmName("returningResponseMeta")
+    fun returning(vararg responseMetas: HttpMessageMeta<Response>) {
+        responseMetas.forEach { responses += it }
+        responseMetas.forEach {
+            produces += Header.CONTENT_TYPE(it.message)?.let { listOf(it) } ?: emptyList()
+        }
+    }
+
+    /**
+     * Add a possible response description/reason and status to this Route
+     */
+    @JvmName("returningStatus")
+    fun returning(vararg statusesToDescriptions: Pair<Status, String>) =
+        statusesToDescriptions.forEach { (status, d) -> returning(d to Response(status)) }
+
+    /**
+     * Add possible response statuses to this Route with no example.
+     */
+    @JvmName("returningStatus")
+    fun returning(vararg statuses: Status) = statuses.forEach { returning(ResponseMeta("", Response(it))) }
+
+    /**
+     * Add an example response (using a Lens and a value) to this Route. It is also possible to pass in the definitionId
+     * for this response body which will override the naturally generated one.
+     */
+    @JvmName("returningStatus")
+    fun <T> returning(
+        status: Status, body: Pair<BiDiBodyLens<T>, T>,
+        description: String? = null,
+        definitionId: String? = null,
+        schemaPrefix: String? = null
+    ) {
+        returning(
+            ResponseMeta(
+                description
+                    ?: status.description,
+                Response(status).with(body.first of body.second),
+                definitionId,
+                body.second,
+                schemaPrefix
+            )
+        )
+    }
+
+    /**
+     * Add all negotiated responses, with samples.  It is also possible to pass in the definitionId
+     * for this response body which will override the naturally generated one.
+     */
+    @JvmName("returningStatusNegotiated")
+    fun <T : Any> returning(
+        status: Status,
+        negotiated: Pair<AutoContentNegotiator<T>, T>,
+        description: String? = null,
+        definitionId: String? = null,
+        schemaPrefix: String? = null
+    ) {
+        for (lens in negotiated.first) {
+            returning(status, lens to negotiated.second, description, definitionId, schemaPrefix)
+        }
+    }
+
+    /**
+     * Add an example request (using a Lens and a value) to this Route. It is also possible to pass in the definitionId
+     * for this request body which will override the naturally generated one.
+     */
+    fun <T> receiving(
+        body: Pair<BiDiBodyLens<T>, T>,
+        definitionId: String? = null,
+        schemaPrefix: String? = null
+    ) {
+        requestBody = body.first
+        receiving(
+            RequestMeta(
+                Request(Method.POST, "").with(body.first of body.second),
+                definitionId,
+                body.second,
+                schemaPrefix
+            )
+        )
+    }
+
+    /**
+     * Add negotiated example requests to this route.  It is also possible to pass in the definitionId
+     * for this request body which will override the naturally generated one.
+     */
+    @JvmName("receivingNegotiated")
+    fun <T> receiving(
+        negotiated: Pair<AutoContentNegotiator<T>, T>,
+        definitionId: String? = null,
+        schemaPrefix: String? = null
+    ) {
+        for (lens in negotiated.first) {
+            receiving(lens to negotiated.second, definitionId, schemaPrefix)
+        }
+        requestBody = negotiated.first.toBodyLens()
+    }
+
+    /**
+     * Add request metadata to this Route. A route only supports a single possible request.
+     */
+    fun receiving(requestMeta: HttpMessageMeta<Request>) {
+        requests += requestMeta
+        consumes += Header.CONTENT_TYPE(requestMeta.message)?.let { listOf(it) } ?: emptyList()
+    }
+
+    /**
+     * Set the input body type for this request WITHOUT an example. Hence the content-type will be registered but no
+     * example schema will be generated.
+     */
+    fun <T> receiving(bodyLens: BiDiBodyLens<T>) {
+        requestBody = bodyLens
+        receiving(RequestMeta(Request(Method.POST, "").with(Header.CONTENT_TYPE of bodyLens.contentType)))
+    }
+
+    fun markAsDeprecated() {
+        deprecated = true
+    }
+}
