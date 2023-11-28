@@ -1,6 +1,6 @@
 package org.http4k.contract2.meta
 
-data class OpenApi(
+data class RestApi(
     val info: ApiInfo,
     val routes: List<ContractRoute>
 )

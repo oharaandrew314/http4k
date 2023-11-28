@@ -1,9 +1,9 @@
-package org.http4k.contract2.spec
+package org.http4k.contract2.openapi
 
-import org.http4k.contract2.meta.OpenApi
+import org.http4k.contract2.meta.RestApi
 import org.http4k.contract2.meta.RouteMeta
 
-fun OpenApi.toDtoV3() = OpenApiDto(
+fun RestApi.toDtoV3() = OpenApiDto(
     openapi = "3.1.0",
     info = OpenApiInfoDto(
         title = info.title,

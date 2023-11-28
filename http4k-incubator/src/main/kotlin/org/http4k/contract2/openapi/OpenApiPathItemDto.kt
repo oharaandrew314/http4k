@@ -1,4 +1,4 @@
-package org.http4k.contract2.spec
+package org.http4k.contract2.openapi
 
 data class OpenApiPathItemDto(
     val summary: String?,
