@@ -10,14 +10,14 @@ import dev.forkhandles.values.random
 import org.http4k.core.Status.Companion.NOT_FOUND
 import java.util.UUID
 
-class CatId(value: UUID): UUIDValue(value), ModelId<UUID> {
+class CatId(value: UUID): UUIDValue(value) {
     companion object: UUIDValueFactory<CatId>(::CatId)
 }
 
 data class Cat(
     override val id: CatId,
     val name: String
-): Model<CatId, UUID>
+): Model<CatId>
 
 class CatService(vararg cats: Cat) {
 

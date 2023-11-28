@@ -16,26 +16,25 @@ import org.http4k.core.Status.Companion.CREATED
 import org.http4k.core.Status.Companion.OK
 import org.http4k.core.with
 import org.http4k.lens.Path
-import org.http4k.lens.value
 
-fun interface GetResource<Resource: Model<Id, IdPrim>, Id: ModelId<IdPrim>, IdPrim: Any>:
+fun interface GetResource<Resource: Model<Id>, Id: ModelId>:
         (Request, Id) -> Result4k<Resource, Http4kError>
 
-fun interface CreateResource<Resource: Model<Id, IdPrim>, Id: ModelId<IdPrim>, IdPrim: Any, Data: Any>:
+fun interface CreateResource<Resource: Model<Id>, Id: ModelId, Data: Any>:
         (Request, Data) -> Result4k<Resource, Http4kError>
 
-fun interface UpdateResource<Resource: Model<Id, IdPrim>, Id: ModelId<IdPrim>, IdPrim: Any, Data: Any>:
+fun interface UpdateResource<Resource: Model<Id>, Id: ModelId, Data: Any>:
         (Request, Id, Data) -> Result4k<Resource, Http4kError>
 
-inline fun <reified M: Model<Id, IdPrim>, Id: ModelId<IdPrim>, IdPrim: Any, reified Data: Any> Http4kApplicationBuilder.resource2(
+inline fun <reified M: Model<Id>, Id: ModelId, reified Data: Any> Http4kApplicationBuilder.resource2(
     path: String,
-    idFactory: ValueFactory<Id, IdPrim>,
-    get: GetResource<M, Id, IdPrim>? = null,
-    create: CreateResource<M, Id, IdPrim, Data>? = null,
-    update: UpdateResource<M, Id, IdPrim, Data>? = null,
+    idFactory: ValueFactory<Id, out Any>,
+    get: GetResource<M, Id>? = null,
+    create: CreateResource<M, Id, Data>? = null,
+    update: UpdateResource<M, Id, Data>? = null,
 //        list: Request.() -> Page<M, Id, IdPrim> = { Page.empty() },
 ) {
-    val idLens = Path.value(idFactory).of("${path.trimEnd('s')}_id")
+    val idLens = Path.map(idFactory::parse).of("${path.trimEnd('s')}_id")
     val itemLens = lens<M>().toLens()
     val dataLens = lens<Data>().toLens()
 

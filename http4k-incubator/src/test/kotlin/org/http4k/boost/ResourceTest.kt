@@ -10,7 +10,6 @@ import org.http4k.core.Status.Companion.OK
 import org.http4k.hamkrest.hasBody
 import org.http4k.hamkrest.hasStatus
 import org.junit.jupiter.api.Test
-import java.util.UUID
 
 class ResourceTest {
 
@@ -21,7 +20,7 @@ class ResourceTest {
     fun `top level resource with dsl builder`() {
         val app = http4kBoost("Cats Api") {
             addHealthCheck()
-            resource<Cat, CatId, UUID>("cats", CatId) {
+            resource<Cat, CatId>("cats", CatId) {
                 get(cats::get)
                 create<CatData>(cats::create)
                 update<CatData>(cats::set)
@@ -37,7 +36,7 @@ class ResourceTest {
     fun `top level resource with kwargs builder`() {
         val app = http4kBoost("Cats Api") {
             addHealthCheck()
-            resource2<Cat, CatId, UUID, CatData>(
+            resource2<Cat, CatId, CatData>(
                 path = "cats",
                 idFactory = CatId,
                 get = { _, id -> cats[id] },

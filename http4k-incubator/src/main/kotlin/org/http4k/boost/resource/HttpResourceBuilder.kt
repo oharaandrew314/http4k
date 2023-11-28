@@ -2,11 +2,11 @@ package org.http4k.boost.resource
 
 import dev.forkhandles.result4k.Result4k
 import dev.forkhandles.result4k.map
-import dev.forkhandles.values.Value
 import dev.forkhandles.values.ValueFactory
 import org.http4k.boost.Http4kApplicationBuilder
 import org.http4k.boost.Http4kError
 import org.http4k.boost.Model
+import org.http4k.boost.ModelId
 import org.http4k.contract.bindContract
 import org.http4k.contract.div
 import org.http4k.core.Request
@@ -17,7 +17,6 @@ import org.http4k.core.with
 import org.http4k.lens.BiDiBodyLens
 import org.http4k.lens.Path
 import org.http4k.lens.PathLens
-import org.http4k.lens.value
 
 class HttpResourceBuilder<Resource: Any, Id: Any>(
     val appBuilder: Http4kApplicationBuilder,
@@ -62,12 +61,12 @@ class HttpResourceBuilder<Resource: Any, Id: Any>(
     }
 }
 
-inline fun <reified Resource: Model<Id, IdPrim>, Id: Value<IdPrim>, IdPrim: Any> Http4kApplicationBuilder.resource(
+inline fun <reified Resource: Model<Id>, Id: ModelId> Http4kApplicationBuilder.resource(
     path: String,
-    idFactory: ValueFactory<Id, IdPrim>,
+    idFactory: ValueFactory<Id, out Any>,
     fn: HttpResourceBuilder<Resource, Id>.() -> Unit
 ) {
-    val idLens = Path.value(idFactory).of("${path.trimEnd('s')}_id")
+    val idLens = Path.map(idFactory::parse).of("${path.trimEnd('s')}_id")
     HttpResourceBuilder(
         appBuilder = this,
         path = path,
