@@ -3,153 +3,130 @@ package org.http4k.contract2.openapi
 import org.http4k.core.Uri
 
 data class OpenApiComponentsDto(
-    val schemas: Map<String, OpenApiSchemaDto>,
-    val responses: Map<String, OpenApiReferencable<OpenApiResponseDto>>,
-    val parameters: Map<String, OpenApiReferencable<OpenApiParameterDto>>?,
-    val examples: Map<String, OpenApiReferencable<OpenApiExampleDto>>?,
-    val requestBodies: Map<String, OpenApiReferencable<OpenApiRequestBodyDto>>?,
-    val headers: Map<String, OpenApiReferencable<OpenApiHeaderDto>>?,
-    val securitySchemes: Map<String, OpenApiReferencable<OpenApiSecuritySchemeDto>>?,
-    val links: Map<String, OpenApiReferencable<OpenApiLinkDto>>?,
-    val callbacks: Map<String, OpenApiReferencable<OpenApiCallbackDto>>,
-    val pathItems: Map<String, OpenApiReferencable<OpenApiPathItemDto>>
+    val schemas: Map<String, OpenApiSchemaDto>? = null,
+    val responses: Map<String, OpenApiResponseDto>? = null,
+    val parameters: Map<String, OpenApiParameterDto>? = null,
+    val examples: Map<String, OpenApiExampleDto>? = null,
+    val requestBodies: Map<String, OpenApiRequestBodyDto>? = null,
+    val headers: Map<String, OpenApiHeaderDto>? = null,
+    val securitySchemes: Map<String, OpenApiSecuritySchemeDto>? = null,
+    val links: Map<String, OpenApiLinkDto>? = null,
+    val callbacks: Map<String, OpenApiCallbackDto>? = null,
+    val pathItems: Map<String, OpenApiPathItemDto>? = null
 )
 
 data class OpenApiSchemaDto(
-    val discriminator: Discriminator?,
-    val xml: Xml?,
-    val externalDocs: OpenApiExternalDocsDto?,
-    val example: Any?  // deprecated in favor of json schema examples keyword
-): OpenApiReferencable<OpenApiSchemaDto> {
+    val type: String? = null, // only nullable if ref
+    val format: String? = null,
+    val description: String? = null,
+    val default: Any? = null,
+    val required: List<String>? = null,
+    val `$ref`: String? = null,
+
+    // string
+    val enum: List<String>? = null,
+
+    // object
+    val items: OpenApiSchemaDto? = null,
+    val properties: Map<String, OpenApiSchemaDto>? = null,
+    val additionalProperties: OpenApiSchemaDto? = null,
+
+    val discriminator: Discriminator? = null,
+    val xml: Xml? = null,
+    val externalDocs: OpenApiExternalDocsDto? = null,
+    val example: Any? = null,  // deprecated in favor of json schema examples keyword
+) {
     data class Discriminator(
         val propertyName: String,
-        val mapping: Map<String, String>?,
-        val externalDocs: OpenApiExternalDocsDto?,
-        val example: Any? // deprecated in favor of json schema examples keyword
+        val mapping: Map<String, String>? = null,
+        val externalDocs: OpenApiExternalDocsDto? = null,
+        val example: Any? = null // deprecated in favor of json schema examples keyword
     )
     data class Xml(
-        val name: String?,
-        val namespace: Uri?,
-        val prefix: String?,
-        val attribute: Boolean,
-        val wrapped: Boolean
+        val name: String? = null,
+        val namespace: Uri? = null,
+        val prefix: String? = null,
+        val attribute: Boolean? = null,
+        val wrapped: Boolean? = null
     )
 }
 
 data class OpenApiResponseDto(
-    val description: String,
-    val headers: Map<String, OpenApiReferencable<OpenApiHeaderDto>>,
-    val content: Map<String, OpenApiMediaTypeDto>?,
-    val links: Map<String, OpenApiReferencable<OpenApiLinkDto>>,
-): OpenApiReferencable<OpenApiResponseDto>
+    val description: String? = null, // only nullable if ref
+    val headers: Map<String, OpenApiHeaderDto>? = null,
+    val content: Map<String, OpenApiMediaTypeDto>? = null,
+    val links: Map<String, OpenApiLinkDto>? = null,
+    val `$ref`: String? = null,
+)
 
 data class OpenApiLinkDto(
-    val operationRef: Uri?, // mutually exclusive with operationId
-    val operationId: String?, // mutually exclusive with operationRef
-    val parameters: Map<String, Any>?,
-    val requestBody: Any?,
-    val description: String?,
-    val server: OpenApiServerDto?
+    val operationRef: Uri? = null, // mutually exclusive with operationId
+    val operationId: String? = null, // mutually exclusive with operationRef
+    val parameters: Map<String, Any>? = null,
+    val requestBody: Any? = null,
+    val description: String? = null,
+    val server: OpenApiServerDto? = null
 )
 
 data class OpenApiParameterDto(
-    val name: String,
-    val `in`: Location,
-    val description: String?,
-    val required: Boolean?,
-    val deprecated: Boolean?,
-    val allowEmptyValue: Boolean? // deprecated
-): OpenApiReferencable<OpenApiParameterDto> {
+    val `$ref`: String? = null,
+    val name: String? = null, // only nullable if ref
+    val `in`: Location? = null, // only nullable if ref
+    val description: String? = null,
+    val required: Boolean? = null,
+    val explode: Boolean? = null,
+    val schema: OpenApiSchemaDto? = null,
+    val deprecated: Boolean? = null,
+    val allowEmptyValue: Boolean? = null // deprecated
+) {
     enum class Location { query, header, path, cookie }
 }
 
 
 data class OpenApiRequestBodyDto(
-    val description: String?,
+    val `$ref`: String? = null,
+    val description: String? = null,
     val content: Map<String, OpenApiMediaTypeDto>,
-    val required: Boolean?,
+    val required: Boolean? = null,
 )
 
-sealed interface OpenApiSecuritySchemeDto {
-    val type: Type
-    val description: String?
-//    val name: String, // applied to apiKey type
+data class OpenApiSecuritySchemeDto(
+    val `$ref`: String? = null,
+    val type: Type? = null, // only nullable if ref
+    val description: String? = null,
 
+    // apiKey
+    val name: String? = null,
+    val `in`: Location? = null,
+
+    // http
+    val scheme: String? = null, // required if http
+    val bearerFormat: String? = null,
+
+    // oauth2
+    val flows: Flows? = null,
+
+    // OIDC
+    val openIdConnectUrl: Uri? = null // required if OIDC
+
+) {
+    enum class Location { query, header, cookie }
     enum class Type { apiKey, http, mutualTLS, oauth2, openIdConnect }
 
-    data class ApiKey(
-        override val description: String?,
-        val name: String,
-        val `in`: Location,
-    ): OpenApiSecuritySchemeDto {
-        override val type = Type.apiKey
 
-        enum class Location { query, headers, cookie }
-    }
+    data class Flows(
+        val implicit: Flow? = null,
+        val password: Flow? = null,
+        val clientCredentials: Flow? = null,
+        val authorizationCode: Flow? = null
+    )
 
-    data class Http(
-        override val description: String?,
-        val scheme: String,
-        val bearerFormat: String?
-    ): OpenApiSecuritySchemeDto {
-        override val type = Type.http
-    }
-
-    data class MutualTls(
-        override val description: String?
-    ): OpenApiSecuritySchemeDto {
-        override val type = Type.mutualTLS
-    }
-
-    data class Oauth2(
-        override val description: String?,
-        val flows: Flows?
-    ): OpenApiSecuritySchemeDto {
-        override val type = Type.oauth2
-
-        data class Flows(
-            val implicit: Flow.Implicit?,
-            val password: Flow.Password?,
-            val clientCredentials: Flow.ClientCredentials?,
-            val authorizationCode: Flow.AuthorizationCode?
-        )
-
-        sealed interface Flow {
-            val refreshUrl: Uri?
-            val scopes: Map<String, String>
-
-            data class Implicit(
-                val authorizationUrl: Uri,
-                override val refreshUrl: Uri?,
-                override val scopes: Map<String, String>
-            ): Flow
-
-            data class AuthorizationCode(
-                val authorizationUrl: Uri, // applies to implicit, authCode
-                val tokenUrl: Uri,
-                override val refreshUrl: Uri?,
-                override val scopes: Map<String, String>
-            ): Flow
-
-            data class ClientCredentials(
-                val tokenUrl: Uri,
-                override val refreshUrl: Uri?,
-                override val scopes: Map<String, String>
-            ): Flow
-
-            data class Password(
-                override val refreshUrl: Uri?,
-                override val scopes: Map<String, String>
-            ): Flow
-        }
-    }
-
-    data class OpenIdConnect(
-        override val description: String?,
-        val openIdConnectUrl: Uri
-    ): OpenApiSecuritySchemeDto {
-        override val type = Type.openIdConnect
-    }
+    data class Flow(
+        val refreshUrl: Uri? = null,
+        val scopes: Map<String, String>? = null,
+        val authorizationUrl: Uri? = null, // required for implicit, authCode
+        val tokenUrl: Uri? = null, // required for authCode, clientCredentials
+    )
 }
 
 /**
@@ -157,4 +134,4 @@ sealed interface OpenApiSecuritySchemeDto {
  *  post:
  *   ...
  */
-typealias OpenApiCallbackDto = Map<String, OpenApiReferencable<OpenApiPathItemDto>>
+typealias OpenApiCallbackDto = Map<String, OpenApiPathItemDto>

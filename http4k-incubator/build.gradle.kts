@@ -8,6 +8,7 @@ dependencies {
     compileOnly(Testing.junit.jupiter.api)
 
     testImplementation(project(":http4k-client-apache"))
+    testImplementation(project(":http4k-format-moshi-yaml"))
     testImplementation(testFixtures(project(":http4k-core")))
     testImplementation(project(path = ":http4k-testing-approval"))
     testImplementation(testFixtures(project(":http4k-contract")))
