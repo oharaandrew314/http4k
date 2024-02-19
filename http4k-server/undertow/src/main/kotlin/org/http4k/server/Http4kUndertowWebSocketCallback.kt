@@ -24,6 +24,7 @@ class Http4kWebSocketCallback(private val ws: WsHandler) : WebSocketConnectionCa
 
     override fun onConnect(exchange: WebSocketHttpExchange, channel: WebSocketChannel) {
         val upgradeRequest = exchange.asRequest()
+        val wsResponse = ws(upgradeRequest)
 
         val socket = object : PushPullAdaptingWebSocket() {
             override fun send(message: WsMessage) =
@@ -33,7 +34,7 @@ class Http4kWebSocketCallback(private val ws: WsHandler) : WebSocketConnectionCa
             override fun close(status: WsStatus) {
                 sendClose(status.code, status.description, channel, null)
             }
-        }.apply(ws(upgradeRequest))
+        }.apply(wsResponse)
 
         channel.addCloseTask {
             socket.triggerClose(WsStatus(it.closeCode, it.closeReason ?: "unknown"))

@@ -14,6 +14,7 @@ import org.eclipse.jetty.server.handler.StatisticsHandler
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketUpgradeHandler
 import org.http4k.core.HttpHandler
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.server.ServerConfig.StopMode.Graceful
 import org.http4k.sse.SseHandler
 import org.http4k.websocket.WsHandler
@@ -33,7 +34,7 @@ fun WsHandler.toJettyWsHandler(server: Server): Wrapper {
         container.addMapping("/*") { request, _, _ ->
             request.asHttp4kRequest()?.let { http4kRequest ->
                 val consumer = this.invoke(http4kRequest)
-                if (consumer.subprotocol == null || request.hasSubProtocol(consumer.subprotocol)) {
+                if (consumer.statusCode == SWITCHING_PROTOCOLS && (consumer.subprotocol == null || request.hasSubProtocol(consumer.subprotocol))) {
                     Http4kJettyServerWebSocketEndpoint(consumer, http4kRequest)
                 } else {
                     null

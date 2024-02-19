@@ -1,6 +1,7 @@
 package org.http4k.testing
 
 import org.http4k.core.Request
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.Websocket
 import org.http4k.websocket.WsHandler
@@ -33,4 +34,9 @@ class TestWebsocket(response: WsResponse) : PushPullAdaptingWebSocket() {
     override fun close(status: WsStatus) = server.triggerClose(status)
 }
 
-fun WsHandler.testWebsocket(request: Request): Websocket = TestWebsocket(invoke(request))
+fun WsHandler.testWebsocket(request: Request): Websocket {
+    val response = invoke(request)
+    if (response.statusCode != SWITCHING_PROTOCOLS) error("WebSocket rejected: ${response.statusCode}")
+
+    return TestWebsocket(response)
+}

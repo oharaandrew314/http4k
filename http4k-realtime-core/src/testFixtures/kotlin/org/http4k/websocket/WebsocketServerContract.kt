@@ -10,6 +10,7 @@ import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status.Companion.OK
+import org.http4k.core.Status.Companion.UNAUTHORIZED
 import org.http4k.core.Uri
 import org.http4k.hamkrest.hasBody
 import org.http4k.lens.string
@@ -25,6 +26,7 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import org.http4k.routing.bind as hbind
@@ -74,7 +76,11 @@ abstract class WebsocketServerContract(
                 WsResponse { ws ->
                     ws.onMessage { ws.send(it) }
                 }
-            })
+            },
+            "/reject" bind { _: Request ->
+                WsResponse(UNAUTHORIZED)
+            }
+        )
 
         server = PolyHandler(routes.takeIf { httpSupported }, ws).asServer(serverConfig(0)).start()
     }
@@ -223,5 +229,12 @@ abstract class WebsocketServerContract(
         client.send(anotherMessage)
 
         assertThat(client.received().take(2).toList(), equalTo(listOf(longMessage, anotherMessage)))
+    }
+
+    @Test
+    fun `reject websocket`() {
+        assertThrows<WebsocketNotConnectedException> {
+            WebsocketClient.blocking(Uri.of("ws://localhost:$port/reject"))
+        }
     }
 }

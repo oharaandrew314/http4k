@@ -1,6 +1,7 @@
 package org.http4k.testing
 
 import org.http4k.core.Request
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.server.PolyHandler
 import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.WsClient
@@ -58,5 +59,9 @@ class TestWsClient internal constructor(wsResponse: WsResponse) : WsClient {
     override fun send(message: WsMessage) = socket.triggerMessage(message)
 }
 
-fun WsHandler.testWsClient(request: Request): TestWsClient = TestWsClient(invoke(request))
+fun WsHandler.testWsClient(request: Request): TestWsClient {
+    val response = invoke(request)
+    if (response.statusCode != SWITCHING_PROTOCOLS) error("WebSocket rejected: ${response.statusCode}")
+    return TestWsClient(response)
+}
 fun PolyHandler.testWsClient(request: Request): TestWsClient = ws?.testWsClient(request) ?: error("No WS handler set.")

@@ -2,6 +2,8 @@ package org.http4k.websocket
 
 import org.http4k.core.Body
 import org.http4k.core.Request
+import org.http4k.core.Status
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.routing.RoutingWsHandler
 import org.http4k.websocket.WsStatus.Companion.NORMAL
 import java.io.InputStream
@@ -18,8 +20,9 @@ interface Websocket {
     fun onMessage(fn: (WsMessage) -> Unit)
 }
 
-data class WsResponse(val subprotocol: String? = null, val consumer: WsConsumer) : WsConsumer by consumer {
-    constructor(consumer: WsConsumer) : this(null, consumer)
+data class WsResponse(val subprotocol: String? = null, val statusCode: Status = SWITCHING_PROTOCOLS, val consumer: WsConsumer) : WsConsumer by consumer {
+    constructor(consumer: WsConsumer) : this(null, SWITCHING_PROTOCOLS, consumer)
+    constructor(statusCode: Status): this(null, statusCode, { error(statusCode.toString()) })
 }
 
 typealias WsConsumer = (Websocket) -> Unit

@@ -6,11 +6,13 @@ import com.natpryce.hamkrest.isEmpty
 import com.natpryce.hamkrest.throws
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
+import org.http4k.core.Status.Companion.UNAUTHORIZED
 import org.http4k.testing.ClosedWebsocket
 import org.http4k.testing.testWsClient
 import org.http4k.websocket.WsStatus.Companion.NEVER_CONNECTED
 import org.http4k.websocket.WsStatus.Companion.NORMAL
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.util.concurrent.atomic.AtomicReference
 
 class WsClientTest {
@@ -107,5 +109,14 @@ class WsClientTest {
 
         assertThat(client.received().none(), equalTo(true))
         assertThat(client.received().toList(), isEmpty) // verify NoSuchElement not thrown during iteration
+    }
+
+    @Test
+    fun `websocket rejected`() {
+        val server = { _: Request -> WsResponse(UNAUTHORIZED) }
+        val error = assertThrows<IllegalStateException> {
+            server.testWsClient(Request(GET, "/"))
+        }
+        assertThat(error.message, equalTo("WebSocket rejected: 401 Unauthorized"))
     }
 }

@@ -5,6 +5,7 @@ import org.http4k.core.MemoryBody
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.core.RequestSource
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.core.StreamBody
 import org.http4k.server.Http4kServer
 import org.http4k.server.PolyServerConfig
@@ -13,10 +14,13 @@ import org.http4k.sse.SseHandler
 import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.WsHandler
 import org.http4k.websocket.WsMessage
+import org.http4k.websocket.WsResponse
 import org.http4k.websocket.WsStatus
 import org.java_websocket.WebSocket
 import org.java_websocket.drafts.Draft
+import org.java_websocket.exceptions.InvalidDataException
 import org.java_websocket.handshake.ClientHandshake
+import org.java_websocket.handshake.ServerHandshakeBuilder
 import org.java_websocket.server.WebSocketServer
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -75,16 +79,29 @@ private fun createServer(
     onServerStart: () -> Unit
 ) = object : WebSocketServer(address, drafts) {
 
-    override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
-        val headers = handshake.iterateHttpFields()
+    override fun onWebsocketHandshakeReceivedAsServer(conn: WebSocket, draft: Draft, request: ClientHandshake): ServerHandshakeBuilder {
+        val headers = request.iterateHttpFields()
             .asSequence()
-            .map { it to handshake.getFieldValue(it) }
+            .map { it to request.getFieldValue(it) }
             .toList()
 
-        val upgradeRequest = Request(GET, handshake.resourceDescriptor)
+        val upgradeRequest = Request(GET, request.resourceDescriptor)
             .headers(headers)
-            .let { if (handshake.content != null) it.body(MemoryBody(handshake.content)) else it }
+            .let { if (request.content != null) it.body(MemoryBody(request.content)) else it }
             .source(RequestSource(conn.remoteSocketAddress.hostString, conn.remoteSocketAddress.port))
+
+        val wsResponse = wsHandler(upgradeRequest)
+
+        if (wsResponse.statusCode != SWITCHING_PROTOCOLS) {
+            throw InvalidDataException(wsResponse.statusCode.code)
+        }
+
+        conn.setAttachment(wsResponse)
+        return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
+    }
+
+    override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
+        val response = conn.getAttachment<WsResponse>()
 
         val wsAdapter = object : PushPullAdaptingWebSocket() {
             override fun send(message: WsMessage) {
@@ -100,7 +117,7 @@ private fun createServer(
         }
 
         conn.setAttachment(wsAdapter)
-        wsHandler(upgradeRequest)(wsAdapter)
+        response(wsAdapter)
     }
 
     override fun onClose(conn: WebSocket, code: Int, reason: String?, remote: Boolean) {

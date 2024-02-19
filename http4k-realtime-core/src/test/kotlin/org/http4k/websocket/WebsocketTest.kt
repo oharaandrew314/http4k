@@ -4,8 +4,10 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import org.http4k.core.Method
 import org.http4k.core.Request
+import org.http4k.core.Status.Companion.UNAUTHORIZED
 import org.http4k.testing.testWebsocket
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.fail
 import java.util.concurrent.atomic.AtomicReference
 
@@ -29,7 +31,7 @@ class WebsocketTest {
 
     @Test
     fun `when match, passes a consumer with the matching request`() {
-        val consumer = TestConsumer();
+        val consumer = TestConsumer()
 
         var r: Request? = null
         { req: Request ->
@@ -69,5 +71,14 @@ class WebsocketTest {
         consumer.websocket.send(message)
 
         assertThat(received, equalTo(listOf(message, message)))
+    }
+
+    @Test
+    fun `websocket rejected`() {
+        val server = { _: Request -> WsResponse(UNAUTHORIZED) }
+        val error = assertThrows<IllegalStateException> {
+            server.testWebsocket(Request(Method.GET, "/"))
+        }
+        assertThat(error.message, equalTo("WebSocket rejected: 401 Unauthorized"))
     }
 }

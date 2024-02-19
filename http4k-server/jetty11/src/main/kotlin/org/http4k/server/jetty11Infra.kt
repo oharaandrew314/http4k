@@ -20,6 +20,7 @@ import org.eclipse.jetty.websocket.core.server.WebSocketNegotiation
 import org.eclipse.jetty.websocket.core.server.WebSocketNegotiator
 import org.eclipse.jetty.websocket.core.server.WebSocketUpgradeHandler
 import org.http4k.core.HttpHandler
+import org.http4k.core.Status.Companion.SWITCHING_PROTOCOLS
 import org.http4k.server.ServerConfig.StopMode.Graceful
 import org.http4k.servlet.jakarta.asHttp4kRequest
 import org.http4k.servlet.jakarta.asServlet
@@ -42,10 +43,11 @@ fun WsHandler.toJettyWsHandler() = WebSocketUpgradeHandler(WebSocketComponents()
 }
 
 fun WsHandler.toJettyNegotiator() = object : WebSocketNegotiator.AbstractNegotiator() {
-    override fun negotiate(negotiation: WebSocketNegotiation): FrameHandler {
-        val consumer = this@toJettyNegotiator(negotiation.request.asHttp4kRequest()!!)
-        consumer.subprotocol?.also { negotiation.subprotocol = it }
-        return Http4kWebSocketFrameHandler(consumer)
+    override fun negotiate(negotiation: WebSocketNegotiation): FrameHandler? {
+        val response = this@toJettyNegotiator(negotiation.request.asHttp4kRequest()!!)
+        if (response.statusCode != SWITCHING_PROTOCOLS) return null
+        response.subprotocol?.also { negotiation.subprotocol = it }
+        return Http4kWebSocketFrameHandler(response)
     }
 }
 
