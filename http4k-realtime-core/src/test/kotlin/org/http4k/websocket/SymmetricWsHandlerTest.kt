@@ -4,21 +4,25 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import org.http4k.core.Method
 import org.http4k.core.Request
+import org.http4k.routing.websockets
+import org.http4k.routing.ws.bind
 import org.http4k.testing.toSymmetric
 import org.junit.jupiter.api.Test
 
 class SymmetricWsHandlerTest {
 
     private val messages = mutableListOf<String>()
-    private val handler = { _: Request ->
-        WsResponse { ws ->
-            ws.onMessage { messages += it.bodyString() }
+    private val handler = websockets(
+        "/ack" bind {
+            WsResponse { ws ->
+                ws.onMessage { messages += it.bodyString() }
+            }
         }
-    }.toSymmetric()
+    ).toSymmetric()
 
     @Test
     fun `open websocket directly from handler`() {
-        handler(Request(Method.GET, "/"))
+        handler(Request(Method.GET, "/ack"))
             .send(WsMessage("hi"))
 
         assertThat(messages, equalTo(listOf("hi")))
