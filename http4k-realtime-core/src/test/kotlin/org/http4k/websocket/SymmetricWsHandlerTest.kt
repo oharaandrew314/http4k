@@ -2,7 +2,7 @@ package org.http4k.websocket
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import org.http4k.core.Method
+import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.routing.websockets
 import org.http4k.routing.ws.bind
@@ -22,7 +22,7 @@ class SymmetricWsHandlerTest {
 
     @Test
     fun `open websocket directly from handler`() {
-        handler(Request(Method.GET, "/ack"))
+        handler(Request(GET, "/ack"))
             .send(WsMessage("hi"))
 
         assertThat(messages, equalTo(listOf("hi")))
