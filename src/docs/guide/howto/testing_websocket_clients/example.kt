@@ -2,7 +2,7 @@ package guide.howto.testing_websocket_clients
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import org.http4k.client.JavaWsHandler
+import org.http4k.client.WebsocketClient
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Uri
@@ -42,7 +42,7 @@ fun main() {
 
     // the JavaWebSocketClient is a SymmetricWsHandler
     val wsHandler: SymmetricWsHandler = SymmetricWsFilter.SetHostFrom(host)
-        .then(JavaWsHandler())
+        .then(WebsocketClient.symmetric())
 
     // The SymmetricWsHandler can be injected directly into the GreetingClient under test
     val client = GreetingClient(wsHandler)

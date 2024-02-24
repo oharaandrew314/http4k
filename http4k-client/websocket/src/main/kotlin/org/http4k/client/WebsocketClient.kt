@@ -5,8 +5,10 @@ import org.http4k.client.internal.BlockingQueueClient
 import org.http4k.client.internal.BlockingWsClient
 import org.http4k.client.internal.NonBlockingClient
 import org.http4k.core.Headers
+import org.http4k.core.Request
 import org.http4k.core.Uri
 import org.http4k.websocket.PushPullAdaptingWebSocket
+import org.http4k.websocket.SymmetricWsHandler
 import org.http4k.websocket.Websocket
 import org.http4k.websocket.WsClient
 import org.http4k.websocket.WsConsumer
@@ -18,6 +20,7 @@ import java.time.Duration
 import java.time.Duration.ZERO
 import java.time.Duration.of
 import java.time.temporal.ChronoUnit.SECONDS
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.atomic.AtomicReference
@@ -34,6 +37,27 @@ object WebsocketClient {
         socket.set(AdaptingWebSocket(client).apply { onError(onError) })
         client.connect()
         return socket.get()
+    }
+
+    fun symmetric(draft: Draft = Draft_6455(), timeout: Duration? = null, errorHandler: (Request, Throwable) -> Unit = { _, e -> throw e }): SymmetricWsHandler = { request ->
+        var websocket: Websocket? = null
+        val waitForWs = CountDownLatch(1)
+
+        nonBlocking(request.uri, request.headers, timeout ?: ZERO, draft = draft,
+            onConnect = {
+                websocket = it
+                waitForWs.countDown()
+            },
+            onError = { errorHandler(request, it) }
+        )
+
+        if (timeout == null) {
+            waitForWs.await()
+        } else {
+            waitForWs.await(timeout.toMillis(), MILLISECONDS)
+        }
+
+        websocket ?: throw WebsocketNotConnectedException()
     }
 
     /**
