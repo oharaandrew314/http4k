@@ -13,6 +13,7 @@ import org.http4k.sse.SseResponse
 import org.http4k.sse.then
 import org.http4k.websocket.WsFilter
 import org.http4k.websocket.WsResponse
+import org.http4k.websocket.invoke
 import org.http4k.websocket.then
 import org.junit.jupiter.api.Test
 import java.util.concurrent.atomic.AtomicReference
@@ -64,6 +65,8 @@ class CoreExtensionsTest {
     fun `can set subprotocol on WsResponse`() {
         val handler = ServerFilters.SetWsSubProtocol("foobar")
             .then { WsResponse { _ -> } }
-        assertThat(handler(Request(GET, "/")).subprotocol, equalTo("foobar"))
+
+        val response = handler("/") as WsResponse.Accept
+        assertThat(response.subprotocol, equalTo("foobar"))
     }
 }

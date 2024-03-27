@@ -6,10 +6,10 @@ import org.http4k.sse.SseHandler
 import org.http4k.sse.SseResponse
 import org.http4k.websocket.WsConsumer
 import org.http4k.websocket.WsHandler
-import org.http4k.websocket.WsResponse
+import org.http4k.websocket.asWsHandler
 
 @JvmName("wsConsumerAsServer")
-fun WsConsumer.asServer(config: PolyServerConfig): Http4kServer = { _: Request -> WsResponse(this@asServer) }.asServer(config)
+fun WsConsumer.asServer(config: PolyServerConfig): Http4kServer = asWsHandler().asServer(config)
 
 @JvmName("sseConsumerAsServer")
 fun SseConsumer.asServer(config: PolyServerConfig): Http4kServer = { _: Request -> SseResponse(this@asServer) }.asServer(config)

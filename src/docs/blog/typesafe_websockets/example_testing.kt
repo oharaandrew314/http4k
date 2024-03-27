@@ -2,7 +2,7 @@ package blog.typesafe_websockets
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import org.http4k.client.WebsocketClient
+import org.http4k.client.JavaWebSocketClient
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.core.Uri
@@ -11,11 +11,13 @@ import org.http4k.routing.websockets
 import org.http4k.routing.ws.bind
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
-import org.http4k.testing.testWsClient
 import org.http4k.websocket.WsClient
 import org.http4k.websocket.WsHandler
 import org.http4k.websocket.WsMessage
 import org.http4k.websocket.WsResponse
+import org.http4k.websocket.blocking
+import org.http4k.websocket.invoke
+import org.http4k.websocket.wsOrThrow
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -48,12 +50,12 @@ abstract class WebsocketContract {
 
 // a unit test version of the contract - it connects to the websocket in memory with no network
 class WebsocketUnitTest : WebsocketContract() {
-    override fun client() = testApp.testWsClient(Request(GET, "/bob"))
+    override fun client() = testApp(Request(GET, "/bob")).wsOrThrow().blocking()
 }
 
 // a integration test version of the contract - it starts a server and connects to the websocket over the network
 class WebsocketServerTest : WebsocketContract() {
-    override fun client() = WebsocketClient.blocking(Uri.of("ws://localhost:8000/bob"))
+    override fun client() = JavaWebSocketClient()(Uri.of("ws://localhost:8000/bob")).wsOrThrow().blocking()
 
     private val server = testApp.asServer(Undertow(8000))
 

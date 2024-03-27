@@ -1,11 +1,13 @@
 package blog.nanoservices
 
-import org.http4k.client.WebsocketClient
+import org.http4k.client.JavaWebSocketClient
 import org.http4k.core.Uri
 import org.http4k.server.Netty
 import org.http4k.server.asServer
 import org.http4k.websocket.Websocket
 import org.http4k.websocket.WsMessage
+import org.http4k.websocket.invoke
+import org.http4k.websocket.wsOrThrow
 import java.time.Instant
 
 fun `ticking websocket clock`() =
@@ -18,5 +20,5 @@ fun `ticking websocket clock`() =
 
 fun main() {
     `ticking websocket clock`()
-    WebsocketClient.nonBlocking(Uri.of("http://localhost:8000")).onMessage { println(it) }
+    JavaWebSocketClient()(Uri.of("http://localhost:8000")).wsOrThrow().onMessage { println(it) }
 }

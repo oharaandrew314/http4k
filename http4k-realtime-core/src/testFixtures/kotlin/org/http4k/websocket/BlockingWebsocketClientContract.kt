@@ -4,17 +4,20 @@ import com.natpryce.hamkrest.Matcher
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.throws
-import org.http4k.core.Headers
+import org.http4k.core.Method.GET
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status.Companion.CLIENT_TIMEOUT
+import org.http4k.core.Status.Companion.NOT_FOUND
+import org.http4k.core.Status.Companion.UNKNOWN_HOST
 import org.http4k.core.StreamBody
 import org.http4k.core.Uri
 import org.http4k.server.PolyServerConfig
 import org.junit.jupiter.api.Test
-import java.time.Duration
 
 abstract class BlockingWebsocketClientContract(
     serverConfig: PolyServerConfig,
-    private val websocketFactory: (Uri, Headers, Duration) -> WsClient,
-    private val connectionErrorTimeout: Duration = Duration.ofSeconds(1)
+    protected val wsHandler: WsHandler,
 ) : BaseWebsocketClientContract(serverConfig) {
 
     abstract fun <T: Throwable> connectErrorMatcher(): Matcher<T>
@@ -22,7 +25,7 @@ abstract class BlockingWebsocketClientContract(
 
     @Test
     fun `send and receive in text mode`() {
-        val ws = websocket(Uri.of("ws://localhost:$port/bob"))
+        val ws = wsHandler(Uri.of("ws://localhost:$port/bob")).wsOrThrow().blocking()
         ws.send(WsMessage("hello"))
 
         val messages = ws.received().take(4).toList()
@@ -32,7 +35,7 @@ abstract class BlockingWebsocketClientContract(
 
     @Test
     fun `send and receive in binary mode`() {
-        val ws = websocket(Uri.of("ws://localhost:$port/bin"))
+        val ws = wsHandler(Uri.of("ws://localhost:$port/bin")).wsOrThrow().blocking()
         ws.send(WsMessage("hello".byteInputStream()))
 
         val messages = ws.received().take(4).toList()
@@ -43,14 +46,24 @@ abstract class BlockingWebsocketClientContract(
 
 
     @Test
-    fun `exception is thrown on connection error`() {
-        assertThat({ websocket(Uri.of("ws://does-not-exist:12345"), timeout = connectionErrorTimeout) },
-            throws(connectErrorMatcher()))
+    fun `websocket is refused when path not found`() {
+        assertThat(
+            wsHandler(Uri.of("ws://localhost:$port/not-found")),
+            equalTo(WsResponse.Refuse(Response(NOT_FOUND)))
+        )
+    }
+
+    @Test
+    fun `websocket is refused when host not found`() {
+        assertThat(
+            wsHandler(Uri.of("ws://locahost:12345/bin")),
+            equalTo(WsResponse.Refuse(Response(CLIENT_TIMEOUT)))
+        )
     }
 
     @Test
     fun `exception is thrown on sending after connection is closed`() {
-        val ws = websocket(Uri.of("ws://localhost:$port/bob"))
+        val ws = wsHandler(Uri.of("ws://localhost:$port/bob")).wsOrThrow().blocking()
         ws.send(WsMessage("hello"))
 
         val messages = ws.received().take(3).toList()
@@ -61,14 +74,16 @@ abstract class BlockingWebsocketClientContract(
 
     @Test
     fun `headers are sent to the server`() {
-        val ws = websocket(Uri.of("ws://localhost:$port/headers"), headers = listOf("testOne" to "1", "testTwo" to "2"))
+        val ws = Request(GET, Uri.of("ws://localhost:$port/headers"))
+            .headers(listOf("testOne" to "1", "testTwo" to "2"))
+            .let(wsHandler)
+            .wsOrThrow()
+            .blocking()
+
         ws.send(WsMessage(""))
 
         val messages = ws.received().take(4).toList()
 
         assertThat(messages, equalTo(listOf(WsMessage("testOne=1"), WsMessage("testTwo=2"))))
     }
-
-    private fun websocket(uri: Uri, headers: Headers = emptyList(), timeout: Duration = Duration.ofSeconds(3)): WsClient =
-        websocketFactory(uri, headers, timeout)
 }

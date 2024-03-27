@@ -1,6 +1,6 @@
 package guide.howto.serve_websockets
 
-import org.http4k.client.WebsocketClient
+import org.http4k.client.JavaWebSocketClient
 import org.http4k.core.Request
 import org.http4k.core.Uri
 import org.http4k.format.Jackson.auto
@@ -11,6 +11,9 @@ import org.http4k.server.asServer
 import org.http4k.websocket.Websocket
 import org.http4k.websocket.WsMessage
 import org.http4k.websocket.WsResponse
+import org.http4k.websocket.blocking
+import org.http4k.websocket.invoke
+import org.http4k.websocket.wsOrThrow
 
 data class Person(val name: String, val age: Int)
 
@@ -31,7 +34,7 @@ fun main() {
         }
     ).asServer(Jetty(8000)).start()
 
-    val client = WebsocketClient.blocking(Uri.of("ws://localhost:8000/ageMe"))
+    val client = JavaWebSocketClient()(Uri.of("ws://localhost:8000/ageMe")).wsOrThrow().blocking()
 
     // send a message in "native form" - we could also use the Lens here to auto-marshall
     client.send(WsMessage("""{ "name":"bob", "age": 25 }"""))

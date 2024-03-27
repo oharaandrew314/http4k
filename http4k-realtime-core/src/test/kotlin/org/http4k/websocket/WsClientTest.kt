@@ -6,8 +6,9 @@ import com.natpryce.hamkrest.isEmpty
 import com.natpryce.hamkrest.throws
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
-import org.http4k.testing.ClosedWebsocket
-import org.http4k.testing.testWsClient
+import org.http4k.core.Response
+import org.http4k.core.Status.Companion.NOT_FOUND
+import org.http4k.routing.ws.bind
 import org.http4k.websocket.WsStatus.Companion.NEVER_CONNECTED
 import org.http4k.websocket.WsStatus.Companion.NORMAL
 import org.junit.jupiter.api.Test
@@ -18,13 +19,13 @@ class WsClientTest {
     private val message = WsMessage("hello")
     private val error = RuntimeException("foo") as Throwable
 
-    private class TestConsumer : WsConsumer {
+    private class TestConsumer {
         lateinit var websocket: Websocket
         val messages = mutableListOf<WsMessage>()
         val throwable = mutableListOf<Throwable>()
         val closed = AtomicReference<WsStatus>()
 
-        override fun invoke(p1: Websocket) {
+        operator fun invoke(p1: Websocket) {
             websocket = p1
             p1.onMessage {
                 messages += it
@@ -40,12 +41,13 @@ class WsClientTest {
 
     @Test
     fun `when match, passes a consumer with the matching request`() {
-        val consumer = TestConsumer();
         var r: Request? = null
-        { req: Request ->
-            r = req
-            WsResponse(consumer)
-        }.testWsClient(Request(GET, "/"))
+        val wsHandler: WsHandler = {
+            r = it
+            WsResponse {}
+        }
+
+        wsHandler(Request(GET, "/"))
 
         assertThat(r!!, equalTo(Request(GET, "/")))
     }
@@ -53,11 +55,15 @@ class WsClientTest {
     @Test
     fun `sends outbound messages to the websocket`() {
         val consumer = TestConsumer()
-        val client = { _: Request -> WsResponse(consumer) }.testWsClient(Request(GET, "/"))
+        lateinit var serverWs: PushPullAdaptingWebSocket
+
+        val client = WsResponse {
+            serverWs = it as PushPullAdaptingWebSocket
+        }.wsOrThrow()
 
         client.send(message)
         assertThat(consumer.messages, equalTo(listOf(message)))
-        client.error(error)
+        serverWs.triggerError(error)
         assertThat(consumer.throwable, equalTo(listOf(error)))
         client.close(NEVER_CONNECTED)
         assertThat(consumer.closed.get(), equalTo(NEVER_CONNECTED))
@@ -65,13 +71,11 @@ class WsClientTest {
 
     @Test
     fun `sends inbound messages to the client`() {
-        val client = { _: Request ->
-            WsResponse { ws: Websocket ->
-                ws.send(message)
-                ws.send(message)
-                ws.close(NEVER_CONNECTED)
-            }
-        }.testWsClient(Request(GET, "/"))
+        val client = WsResponse { ws: Websocket ->
+            ws.send(message)
+            ws.send(message)
+            ws.close(NEVER_CONNECTED)
+        }.wsOrThrow().blocking()
 
         val received = client.received()
         assertThat(received.take(2).toList(), equalTo(listOf(message, message)))
@@ -79,31 +83,33 @@ class WsClientTest {
 
     @Test
     fun `closed websocket throws when read attempted`() {
-        val client = { _: Request ->
-            WsResponse { ws: Websocket ->
-                ws.close(NEVER_CONNECTED)
-            }
-        }.testWsClient(Request(GET, "/"))
+        val client =  WsResponse { ws: Websocket ->
+            ws.close(NEVER_CONNECTED)
+        }.wsOrThrow().blocking()
 
-        assertThat({ client.received().take(2).toList() }, throws(equalTo(ClosedWebsocket(NEVER_CONNECTED))))
+        assertThat(
+            { client.received().take(2).toList() },
+            throws(equalTo(IllegalStateException("foo")))
+        )
     }
 
     @Test
     fun `throws for no match`() {
-        val actual = object : WsHandler {
-            override fun invoke(request: Request) = WsResponse { it.close(NEVER_CONNECTED) }
-        }.testWsClient(Request(GET, "/"))
+        val handler = "/foo" bind {
+            WsResponse {}
+        }
 
-        assertThat({ actual.received().toList() }, throws<ClosedWebsocket>())
+        assertThat(
+            handler("/"),
+            equalTo(WsResponse.Refuse(Response(NOT_FOUND)))
+        )
     }
 
     @Test
     fun `when no messages`() {
-        val client = { _: Request ->
-            WsResponse { ws: Websocket ->
-                ws.close(NORMAL)
-            }
-        }.testWsClient(Request(GET, "/"))
+        val client = WsResponse { ws: Websocket ->
+            ws.close(NORMAL)
+        }.wsOrThrow().blocking()
 
         assertThat(client.received().none(), equalTo(true))
         assertThat(client.received().toList(), isEmpty) // verify NoSuchElement not thrown during iteration

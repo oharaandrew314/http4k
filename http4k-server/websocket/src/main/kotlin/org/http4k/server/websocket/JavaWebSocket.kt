@@ -5,18 +5,22 @@ import org.http4k.core.MemoryBody
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.core.RequestSource
-import org.http4k.core.StreamBody
 import org.http4k.server.Http4kServer
 import org.http4k.server.PolyServerConfig
 import org.http4k.server.ServerConfig
 import org.http4k.sse.SseHandler
 import org.http4k.websocket.PushPullAdaptingWebSocket
+import org.http4k.websocket.Websocket
 import org.http4k.websocket.WsHandler
 import org.http4k.websocket.WsMessage
+import org.http4k.websocket.WsResponse
 import org.http4k.websocket.WsStatus
 import org.java_websocket.WebSocket
 import org.java_websocket.drafts.Draft
+import org.java_websocket.exceptions.InvalidDataException
+import org.java_websocket.framing.CloseFrame
 import org.java_websocket.handshake.ClientHandshake
+import org.java_websocket.handshake.ServerHandshakeBuilder
 import org.java_websocket.server.WebSocketServer
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -76,31 +80,48 @@ private fun createServer(
 ) = object : WebSocketServer(address, drafts) {
 
     override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
-        val headers = handshake.iterateHttpFields()
+//        val ws = conn.getAttachment<Websocket>()
+//        ws.onClose {
+//            conn.close(it.code, it.description)
+//        }
+//        ws.onMessage {
+//            when (it.mode) {
+//                WsMessage.Mode.Text -> conn.send(it.bodyString())
+//                WsMessage.Mode.Binary -> conn.send(it.body.payload)
+//            }
+//        }
+        // TODO handle onError?
+    }
+
+    override fun onWebsocketHandshakeReceivedAsServer(conn: WebSocket, draft: Draft, request: ClientHandshake): ServerHandshakeBuilder {
+        val headers = request.iterateHttpFields()
             .asSequence()
-            .map { it to handshake.getFieldValue(it) }
+            .map { it to request.getFieldValue(it) }
             .toList()
 
-        val upgradeRequest = Request(GET, handshake.resourceDescriptor)
+        val upgradeRequest = Request(GET, request.resourceDescriptor)
             .headers(headers)
-            .let { if (handshake.content != null) it.body(MemoryBody(handshake.content)) else it }
+            .let { if (request.content != null) it.body(MemoryBody(request.content)) else it }
             .source(RequestSource(conn.remoteSocketAddress.hostString, conn.remoteSocketAddress.port))
 
-        val wsAdapter = object : PushPullAdaptingWebSocket() {
-            override fun send(message: WsMessage) {
-                when (message.body) {
-                    is StreamBody -> conn.send(message.body.payload)
-                    else -> conn.send(message.bodyString())  // furthering the generalization that a MemoryBody is ALWAYS to use text mode
+        when(val response = wsHandler(upgradeRequest)) {
+            is WsResponse.Accept -> {
+                conn.setAttachment(response.websocket) // TODO handle sub-protocol?
+                response.websocket.onClose {
+                    conn.close(it.code, it.description)
                 }
+                response.websocket.onMessage {
+                    when (it.mode) {
+                        WsMessage.Mode.Text -> conn.send(it.bodyString())
+                        WsMessage.Mode.Binary -> conn.send(it.body.payload)
+                    }
+                }
+                return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
             }
-
-            override fun close(status: WsStatus) {
-                conn.close(status.code, status.description)
+            is WsResponse.Refuse -> {
+                throw InvalidDataException(CloseFrame.POLICY_VALIDATION)
             }
         }
-
-        conn.setAttachment(wsAdapter)
-        wsHandler(upgradeRequest)(wsAdapter)
     }
 
     override fun onClose(conn: WebSocket, code: Int, reason: String?, remote: Boolean) {
@@ -110,7 +131,7 @@ private fun createServer(
     override fun onMessage(conn: WebSocket, message: ByteBuffer) {
         conn.adapter()?.let { ws ->
             try {
-                ws.triggerMessage(WsMessage(MemoryBody(message)))
+                ws.triggerMessage(WsMessage(message))
             } catch (e: Throwable) {
                 ws.triggerError(e)
             }

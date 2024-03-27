@@ -1,6 +1,8 @@
 package org.http4k.routing
 
 import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
 import org.http4k.core.UriTemplate
 import org.http4k.routing.WsRouterMatch.MatchingHandler
 import org.http4k.routing.WsRouterMatch.Unmatched
@@ -25,7 +27,7 @@ internal class RouterWsHandler(private val list: List<WsRouter>) : RoutingWsHand
 
     override operator fun invoke(request: Request): WsResponse = when (val match = match(request)) {
         is MatchingHandler -> match(request)
-        is Unmatched -> WsResponse { it.close(REFUSE) }
+        is Unmatched -> WsResponse.Refuse(Response(Status.NOT_FOUND))
     }
 
     override fun withBasePath(new: String): RoutingWsHandler =
@@ -45,7 +47,7 @@ internal class TemplateRoutingWsHandler(
 
     override operator fun invoke(request: Request): WsResponse = when (val matched = match(request)) {
         is MatchingHandler -> matched(RoutedRequest(request, template))
-        is Unmatched -> WsResponse { it.close(REFUSE) }
+        is Unmatched -> WsResponse.Refuse(Response(Status.NOT_FOUND))
     }
 
     override fun withBasePath(new: String): TemplateRoutingWsHandler =

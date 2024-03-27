@@ -4,7 +4,11 @@ import com.natpryce.hamkrest.Matcher
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.has
-import org.http4k.core.Headers
+import org.http4k.core.Method
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status.Companion.CLIENT_TIMEOUT
+import org.http4k.core.Status.Companion.NOT_FOUND
 import org.http4k.core.StreamBody
 import org.http4k.core.Uri
 import org.http4k.server.PolyServerConfig
@@ -16,7 +20,7 @@ import java.util.concurrent.TimeUnit
 
 abstract class NonBlockingWebsocketClientContract(
     serverConfig: PolyServerConfig,
-    private val websocketFactory: (Uri, Headers, (Throwable) -> Unit, WsConsumer) -> Websocket
+    private val handler: WsHandler
 ) : BaseWebsocketClientContract(serverConfig) {
 
     @Test
@@ -25,7 +29,7 @@ abstract class NonBlockingWebsocketClientContract(
         val queue = LinkedBlockingQueue<() -> WsMessage?>()
         val received = generateSequence { queue.take()() }
 
-        val ws = websocket(Uri.of("ws://localhost:$port/bob"))
+        val ws = handler(Uri.of("ws://localhost:$port/bob")).wsOrThrow()
         var sent = false
         ws.onMessage {
             if (!sent) {
@@ -47,7 +51,7 @@ abstract class NonBlockingWebsocketClientContract(
         val queue = LinkedBlockingQueue<() -> WsMessage?>()
         val received = generateSequence { queue.take()() }
 
-        websocket(Uri.of("ws://localhost:$port/bin")) { ws ->
+        handler(Uri.of("ws://localhost:$port/bin")).wsOrThrow { ws ->
             ws.onMessage { message ->
                 queue.add { message }
             }
@@ -66,7 +70,7 @@ abstract class NonBlockingWebsocketClientContract(
     fun `onConnect is called when connected`() {
         val connected = CountDownLatch(1)
 
-        websocket(Uri.of("ws://localhost:$port/bob")) {
+        handler(Uri.of("ws://localhost:$port/bob")).wsOrThrow {
             connected.countDown()
         }
 
@@ -74,12 +78,19 @@ abstract class NonBlockingWebsocketClientContract(
     }
 
     @Test
-    fun `onError is called on connection error`() {
-        val error = CountDownLatch(1)
+    fun `refused to unknown host`() {
+        assertThat(
+            handler(Uri.of("ws://does-not-exist:12345")),
+            equalTo(WsResponse.Refuse(Response(CLIENT_TIMEOUT)))
+        )
+    }
 
-        websocket(Uri.of("ws://does-not-exist:12345"), onError = { error.countDown() })
-
-        assertThat(error, isTrue)
+    @Test
+    fun `refused on bad path`() {
+        assertThat(
+            handler(Uri.of("ws://localhost:$port/not_found")),
+            equalTo(WsResponse.Refuse(Response(NOT_FOUND)))
+        )
     }
 
     @Test
@@ -87,9 +98,12 @@ abstract class NonBlockingWebsocketClientContract(
         val queue = LinkedBlockingQueue<() -> WsMessage?>()
         val received = generateSequence { queue.take()() }
 
-        val ws = websocket(Uri.of("ws://localhost:$port/headers"), headers = listOf("testOne" to "1", "testTwo" to "2")) {
-            it.send(WsMessage(""))
-        }
+        val ws = Request(Method.GET, Uri.of("ws://localhost:$port/headers"))
+            .headers(listOf("testOne" to "1", "testTwo" to "2"))
+            .let(handler)
+            .wsOrThrow()
+
+        ws.send(WsMessage(""))
         ws.onMessage {
             queue.add { it }
         }
@@ -99,10 +113,6 @@ abstract class NonBlockingWebsocketClientContract(
 
         assertThat(received.take(4).toList(), equalTo(listOf(WsMessage("testOne=1"), WsMessage("testTwo=2"))))
     }
-
-    private fun websocket(uri: Uri, headers: Headers = emptyList(), onError: (Throwable) -> Unit = {},
-                          onConnect: WsConsumer = {}): Websocket =
-        websocketFactory(uri, headers, onError, onConnect)
 
     private val isTrue: Matcher<CountDownLatch> = has("counted down", { it.await(5, TimeUnit.SECONDS) }, equalTo(true))
 }

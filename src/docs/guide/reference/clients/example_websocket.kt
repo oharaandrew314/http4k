@@ -1,6 +1,6 @@
 package guide.reference.clients
 
-import org.http4k.client.WebsocketClient
+import org.http4k.client.JavaWebSocketClient
 import org.http4k.core.Request
 import org.http4k.core.Uri
 import org.http4k.routing.websockets
@@ -9,6 +9,9 @@ import org.http4k.server.Jetty
 import org.http4k.server.asServer
 import org.http4k.websocket.WsMessage
 import org.http4k.websocket.WsResponse
+import org.http4k.websocket.blocking
+import org.http4k.websocket.invoke
+import org.http4k.websocket.wsOrThrow
 
 fun main() {
 
@@ -25,10 +28,11 @@ fun main() {
                 }
             }
     ).asServer(Jetty(8000)).start()
+    val clientFactory = JavaWebSocketClient()
 
     // blocking client - connection is done on construction
-    val blockingClient =
-        WebsocketClient.blocking(Uri.of("ws://localhost:8000/bob"))
+    val blockingClient = clientFactory(Uri.of("ws://localhost:8000/bob"))
+        .wsOrThrow().blocking()
     blockingClient.send(WsMessage("server sent on connection"))
     blockingClient.received().take(2)
         .forEach { println("blocking client received: $it") }
@@ -38,7 +42,7 @@ fun main() {
     // and connection is done on construction, but doesn't block - the (optional) handler
     // passed to the construction is called on connection.
     val nonBlockingClient =
-        WebsocketClient.nonBlocking(Uri.of("ws://localhost:8000/bob")) {
+        clientFactory(Uri.of("ws://localhost:8000/bob")).wsOrThrow {
             it.run {
                 send(WsMessage("client sent on connection"))
             }

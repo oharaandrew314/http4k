@@ -16,7 +16,9 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeHandler
 import org.http4k.core.HttpHandler
 import org.http4k.server.ServerConfig.StopMode.Graceful
 import org.http4k.sse.SseHandler
+import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.WsHandler
+import org.http4k.websocket.WsResponse
 import java.time.Duration.ofSeconds
 
 fun HttpHandler.toJettyHandler(withStatisticsHandler: Boolean = false): Wrapper = Wrapper(
@@ -32,11 +34,15 @@ fun WsHandler.toJettyWsHandler(server: Server): Wrapper {
     val wsUpgradeHandler = WebSocketUpgradeHandler.from(server, contextHandler) { container ->
         container.addMapping("/*") { request, _, _ ->
             request.asHttp4kRequest()?.let { http4kRequest ->
-                val consumer = this.invoke(http4kRequest)
-                if (consumer.subprotocol == null || request.hasSubProtocol(consumer.subprotocol)) {
-                    Http4kJettyServerWebSocketEndpoint(consumer, http4kRequest)
-                } else {
-                    null
+                when(val response = this.invoke(http4kRequest)) {
+                    is WsResponse.Accept -> {
+                        if (response.subprotocol == null || request.hasSubProtocol(response.subprotocol)) {
+                            Http4kJettyServerWebSocketEndpoint(response.websocket as PushPullAdaptingWebSocket, http4kRequest)
+                        } else {
+                            null
+                        }
+                    }
+                    is WsResponse.Refuse -> null // TODO handle error
                 }
             }
         }

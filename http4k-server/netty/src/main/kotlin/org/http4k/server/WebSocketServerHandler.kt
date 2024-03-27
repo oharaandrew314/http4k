@@ -12,7 +12,9 @@ import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.RequestSource
 import org.http4k.core.Uri
+import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.WsHandler
+import org.http4k.websocket.wsOrThrow
 import java.net.InetSocketAddress
 
 class WebSocketServerHandler(private val wsHandler: WsHandler) : ChannelInboundHandlerAdapter() {
@@ -21,7 +23,7 @@ class WebSocketServerHandler(private val wsHandler: WsHandler) : ChannelInboundH
             if (requiresWsUpgrade(msg)) {
                 val address = ctx.channel().remoteAddress() as InetSocketAddress
                 val upgradeRequest = msg.asRequest(address)
-                val wsConsumer = wsHandler(upgradeRequest)
+                val websocket = wsHandler(upgradeRequest).wsOrThrow() as PushPullAdaptingWebSocket // TODO handle rejection
 
                 val config = WebSocketServerProtocolConfig.newBuilder()
                     .handleCloseFrames(false)
@@ -38,7 +40,7 @@ class WebSocketServerHandler(private val wsHandler: WsHandler) : ChannelInboundH
                                 ctx.pipeline().addAfter(
                                     ctx.name(),
                                     Http4kWsChannelHandler::class.java.name,
-                                    Http4kWsChannelHandler(wsConsumer)
+                                    Http4kWsChannelHandler(websocket)
                                 )
                             }
                         }

@@ -7,12 +7,11 @@ import com.natpryce.hamkrest.isA
 import org.http4k.server.Undertow
 import org.http4k.websocket.BlockingWebsocketClientContract
 import java.net.UnknownHostException
+import java.time.Duration
 
 class OkHttpWebsocketClientBlockingTest : BlockingWebsocketClientContract(
     serverConfig = Undertow(0),
-    websocketFactory = { uri, headers, timeout ->
-        OkHttpWebsocketClient.blocking(uri, headers, timeout)
-    }
+    wsHandler = OkHttpWebsocketClient(timeout = Duration.ofMillis(10))
 ) {
     override fun <T : Throwable> connectErrorMatcher(): Matcher<T> = isA<UnknownHostException>()
 

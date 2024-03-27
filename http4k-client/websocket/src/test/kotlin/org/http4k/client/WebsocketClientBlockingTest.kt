@@ -5,27 +5,31 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import com.natpryce.hamkrest.isA
 import org.http4k.core.Uri
-import org.http4k.server.Jetty
+import org.http4k.server.websocket.JavaWebSocket
 import org.http4k.websocket.BlockingWebsocketClientContract
 import org.http4k.websocket.WsMessage
+import org.http4k.websocket.blocking
+import org.http4k.websocket.invoke
+import org.http4k.websocket.wsOrThrow
 import org.java_websocket.exceptions.WebsocketNotConnectedException
 import org.junit.jupiter.api.Test
 import java.time.Duration
 
 class WebsocketClientBlockingTest : BlockingWebsocketClientContract(
-    serverConfig = Jetty(0),
-    websocketFactory = { uri, headers, timeout ->
-        WebsocketClient.blocking(uri, headers, timeout)
-    },
-    connectionErrorTimeout = Duration.ofMillis(10)
+    serverConfig = JavaWebSocket(0),
+    wsHandler = JavaWebSocketClient(timeout = Duration.ofMillis(10))
 ) {
     override fun <T : Throwable> connectErrorMatcher(): Matcher<T> = isA<WebsocketNotConnectedException>()
 
     override fun <T : Throwable> connectionClosedErrorMatcher(): Matcher<T> = isA<WebsocketNotConnectedException>()
 
     @Test
+    fun foo() = `send and receive in text mode`()
+
+    @Test
     fun `blocking with auto-reconnection (closed by server)`() {
-        val client = WebsocketClient.blocking(Uri.of("ws://localhost:$port/bob"), autoReconnection = true)
+        val wsHandler = JavaWebSocketClient(timeout = Duration.ofMillis(10), autoReconnect = true)
+        val client = wsHandler(Uri.of("ws://localhost:$port/bob")).wsOrThrow().blocking()
         client.send(WsMessage("hello"))
 
         assertThat(client.received().take(3).toList(), equalTo(listOf(WsMessage("bob"), WsMessage("hello"))))
@@ -38,7 +42,8 @@ class WebsocketClientBlockingTest : BlockingWebsocketClientContract(
 
     @Test
     fun `blocking with auto-reconnection (closed by client)`() {
-        val client = WebsocketClient.blocking(Uri.of("ws://localhost:$port/long-living/bob"), autoReconnection = true)
+        val wsHandler = JavaWebSocketClient(timeout = Duration.ofMillis(10), autoReconnect = true)
+        val client = wsHandler(Uri.of("ws://localhost:$port/long-living/bob")).wsOrThrow().blocking()
 
         client.send(WsMessage("hello"))
         Thread.sleep(1000) // wait until the message comes back

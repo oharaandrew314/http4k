@@ -24,7 +24,9 @@ import org.http4k.server.ServerConfig.StopMode.Graceful
 import org.http4k.servlet.jakarta.asHttp4kRequest
 import org.http4k.servlet.jakarta.asServlet
 import org.http4k.sse.SseHandler
+import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.WsHandler
+import org.http4k.websocket.WsResponse
 import java.time.Duration.ofSeconds
 
 fun HttpHandler.toJetty11Handler(withStatisticsHandler: Boolean = false): HandlerWrapper = ServletContextHandler(
@@ -42,10 +44,16 @@ fun WsHandler.toJettyWsHandler() = WebSocketUpgradeHandler(WebSocketComponents()
 }
 
 fun WsHandler.toJettyNegotiator() = object : WebSocketNegotiator.AbstractNegotiator() {
-    override fun negotiate(negotiation: WebSocketNegotiation): FrameHandler {
-        val consumer = this@toJettyNegotiator(negotiation.request.asHttp4kRequest()!!)
-        consumer.subprotocol?.also { negotiation.subprotocol = it }
-        return Http4kWebSocketFrameHandler(consumer)
+    override fun negotiate(negotiation: WebSocketNegotiation): FrameHandler? {
+        return when(val response = this@toJettyNegotiator(negotiation.request.asHttp4kRequest()!!)) {
+            is WsResponse.Accept -> {
+                response.subprotocol?.also { negotiation.subprotocol = it }
+                Http4kWebSocketFrameHandler(response.websocket as PushPullAdaptingWebSocket)
+            }
+            is WsResponse.Refuse -> {
+                null // TODO
+            }
+        }
     }
 }
 

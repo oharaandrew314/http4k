@@ -2,9 +2,9 @@ package org.http4k.websocket
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import org.http4k.core.Method
+import org.http4k.core.Method.GET
 import org.http4k.core.Request
-import org.http4k.testing.testWebsocket
+import org.http4k.routing.ws.bind
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import java.util.concurrent.atomic.AtomicReference
@@ -13,14 +13,14 @@ class WebsocketTest {
 
     private val message = WsMessage("hello")
 
-    private class TestConsumer : WsConsumer {
+    private class TestConsumer {
         lateinit var websocket: Websocket
         val messages = mutableListOf<WsMessage>()
         val throwable = mutableListOf<Throwable>()
         val closed = AtomicReference<WsStatus>()
 
-        override fun invoke(p1: Websocket) {
-            websocket = p1
+        operator fun invoke(websocket: Websocket) {
+            this.websocket = websocket
             websocket.onMessage { messages += it }
             websocket.onClose { closed.set(it) }
             websocket.onError { throwable.add(it) }
@@ -29,21 +29,27 @@ class WebsocketTest {
 
     @Test
     fun `when match, passes a consumer with the matching request`() {
-        val consumer = TestConsumer();
-
         var r: Request? = null
-        { req: Request ->
-            r = req
-            WsResponse(consumer)
-        }.testWebsocket(Request(Method.GET, "/"))
+        val wsHandler = "/" bind {
+            r = it
+            WsResponse { }
+        }
 
-        assertThat(r, equalTo(Request(Method.GET, "/")))
+        wsHandler(Request(GET, "/")).wsOrThrow()
+
+        assertThat(r, equalTo(Request(GET, "/")))
     }
 
     @Test
     fun `sends outbound messages to the websocket`() {
         val consumer = TestConsumer()
-        val client = { _: Request -> WsResponse(consumer) }.testWebsocket(Request(Method.GET, "/"))
+        val wsHandler: WsHandler = {
+            WsResponse {
+                consumer(it)
+            }
+        }
+
+        val client = wsHandler(Request(GET, "/")).wsOrThrow()
         client.onMessage {
             fail("Client must not receive messages it sends")
         }
@@ -57,7 +63,13 @@ class WebsocketTest {
     @Test
     fun `sends inbound messages to the client`() {
         val consumer = TestConsumer()
-        val client = { _: Request -> WsResponse(consumer) }.testWebsocket(Request(Method.GET, "/"))
+        val wsHandler: WsHandler = {
+            WsResponse {
+                consumer(it)
+            }
+        }
+
+        val client = wsHandler(Request(GET, "/")).wsOrThrow()
         consumer.websocket.onMessage {
             fail("Server must not receive messages it sends")
         }
