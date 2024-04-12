@@ -19,14 +19,14 @@ class WsClientTest {
     private val message = WsMessage("hello")
     private val error = RuntimeException("foo") as Throwable
 
-    private class TestConsumer {
-        lateinit var websocket: Websocket
+    private class TestConsumer: WsConsumer {
+        lateinit var websocket: PushPullAdaptingWebSocket
         val messages = mutableListOf<WsMessage>()
         val throwable = mutableListOf<Throwable>()
         val closed = AtomicReference<WsStatus>()
 
-        operator fun invoke(p1: Websocket) {
-            websocket = p1
+        override fun invoke(p1: Websocket) {
+            websocket = p1 as PushPullAdaptingWebSocket
             p1.onMessage {
                 messages += it
             }
@@ -55,15 +55,12 @@ class WsClientTest {
     @Test
     fun `sends outbound messages to the websocket`() {
         val consumer = TestConsumer()
-        lateinit var serverWs: PushPullAdaptingWebSocket
 
-        val client = WsResponse {
-            serverWs = it as PushPullAdaptingWebSocket
-        }.wsOrThrow()
+        val client = WsResponse(null, consumer).wsOrThrow().blocking()
 
         client.send(message)
         assertThat(consumer.messages, equalTo(listOf(message)))
-        serverWs.triggerError(error)
+        consumer.websocket.triggerError(error)
         assertThat(consumer.throwable, equalTo(listOf(error)))
         client.close(NEVER_CONNECTED)
         assertThat(consumer.closed.get(), equalTo(NEVER_CONNECTED))

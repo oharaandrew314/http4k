@@ -5,6 +5,8 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import org.http4k.core.Method.GET
 import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
 import org.http4k.routing.ws.bind
 import org.http4k.websocket.WsResponse
 import org.http4k.websocket.WsStatus
@@ -42,10 +44,9 @@ class WsRoutingTest {
         val websockets = websockets()
 
         val request = Request(GET, "/path1/index.html")
-        websockets(request).wsOrThrow {
-            it.onClose(closed::set)
-        }
-
-        assertThat(closed.get(), equalTo(WsStatus.REFUSE))
+        assertThat(
+            websockets(request),
+            equalTo(WsResponse.Refuse(Response(Status.NOT_FOUND)))
+        )
     }
 }
