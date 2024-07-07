@@ -14,7 +14,6 @@ import org.http4k.core.Status.Companion.CLIENT_TIMEOUT
 import org.http4k.core.Status.Companion.UNKNOWN_HOST
 import org.http4k.core.queries
 import org.http4k.core.toParametersMap
-import org.http4k.urlEncoded
 import java.io.UncheckedIOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -47,21 +46,25 @@ object HelidonClient {
         }
 
         private fun HttpClientResponse.asHttp4k() =
-            headers().fold(Response(Status(status().code(), status().reasonPhrase()))) { acc, next ->
-                next.allValues().fold(acc) { acc2, value -> acc2.header(next.name(), value) }
-            }.body(bodyMode(inputStream()))
+            headers()
+                .fold(Response(Status(status().code(), status().reasonPhrase()))) { acc, header ->
+                    header.allValues().fold(acc) { acc2, value ->
+                        acc2.header(header.name(), value)
+                    }
+                }
+                .body(bodyMode(inputStream()))
     }
 
     internal fun WebClient.makeHelidonRequest(request: Request) =
-        request.headers.groupBy { it.first }
-            .entries
-            .fold(
-                method(Method.create(request.method.name))
-                    .uri(request.uri.copy(query = "").toString())
-                    .apply {
-                        request.uri.queries().toParametersMap().forEach {
-                            queryParam(it.key, *it.value.map { value -> value?.urlEncoded() }.toTypedArray())
-                        }
-                    }
-            ) { acc, next -> acc.header(HeaderNames.create(next.key, next.key), next.value.map { it.second }) }
+        method(Method.create(request.method.name))
+            .uri(request.uri.copy(query = "").toString())
+            .apply {
+                request.uri.queries().toParametersMap().forEach { (name, values) ->
+                    // Replacing space with '+' because unlike other http clients, Helidon encodes space as %20
+                    queryParam(name, *values.map { it?.replace(' ', '+') }.toTypedArray())
+                }
+                request.headers.groupBy { it.first }.entries.fold(this) { acc, (key, parameters) ->
+                    acc.header(HeaderNames.create(key.lowercase(), key), parameters.map { it.second })
+                }
+            }
 }

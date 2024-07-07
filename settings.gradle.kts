@@ -3,7 +3,7 @@
 rootProject.name = "http4k"
 
 plugins {
-    id("de.fayard.refreshVersions").version("0.60.3")
+    id("de.fayard.refreshVersions").version("0.60.5")
 }
 
 refreshVersions {
@@ -58,6 +58,7 @@ include("http4k-cloudnative")
 "http4k-format".apply {
     includeModule("core")
     includeModule("argo")
+    includeModule("dataframe")
     includeModule("gson")
     includeModule("jackson")
     includeModule("jackson-xml")

@@ -19,6 +19,7 @@ import org.http4k.core.Body
 import org.http4k.core.ContentType
 import org.http4k.core.ContentType.Companion.APPLICATION_JSON
 import org.http4k.core.HttpMessage
+import org.http4k.core.with
 import org.http4k.lens.ContentNegotiation
 import org.http4k.lens.string
 import org.http4k.websocket.WsMessage
@@ -61,31 +62,28 @@ class KondorJson(
     override fun JsonNode.asPrettyJsonString(): String = this.render(prettyJsonStyle)
     override fun JsonNode.asCompactJsonString(): String = this.render(compactJsonStyle)
 
-    override fun String.asJsonObject() = when (this) {
-        "" -> error("Empty string found") // this is a bug in the kondor parser
-        else -> parseJsonNode(this).orThrow()
-    }
+    override fun String.asJsonObject() = parseJsonNode(this).orThrow()
 
-    override fun String?.asJsonValue() = this?.let { JsonNodeString(it, NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+    override fun String?.asJsonValue() = this?.let { JsonNodeString(it) } ?: JsonNodeNull
     override fun Int?.asJsonValue() =
-        this?.let { JsonNodeNumber(it.toBigDecimal(), NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+        this?.let { JsonNodeNumber(it.toBigDecimal()) } ?: JsonNodeNull
 
     override fun Double?.asJsonValue() =
-        this?.let { JsonNodeNumber(it.toBigDecimal(), NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+        this?.let { JsonNodeNumber(it.toBigDecimal()) } ?: JsonNodeNull
 
     override fun Long?.asJsonValue() =
-        this?.let { JsonNodeNumber(it.toBigDecimal(), NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+        this?.let { JsonNodeNumber(it.toBigDecimal()) } ?: JsonNodeNull
 
     override fun BigDecimal?.asJsonValue() =
-        this?.let { JsonNodeNumber(it, NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+        this?.let { JsonNodeNumber(it) } ?: JsonNodeNull
 
     override fun BigInteger?.asJsonValue() =
-        this?.let { JsonNodeNumber(it.toBigDecimal(), NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
+        this?.let { JsonNodeNumber(it.toBigDecimal()) } ?: JsonNodeNull
 
-    override fun Boolean?.asJsonValue() = this?.let { JsonNodeBoolean(it, NodePathRoot) } ?: JsonNodeNull(NodePathRoot)
-    override fun <T : Iterable<JsonNode>> T.asJsonArray() = JsonNodeArray(this, NodePathRoot).updateNodePath()
+    override fun Boolean?.asJsonValue() = this?.let { JsonNodeBoolean(it) } ?: JsonNodeNull
+    override fun <T : Iterable<JsonNode>> T.asJsonArray() = JsonNodeArray(this)
     override fun <LIST : Iterable<Pair<String, JsonNode>>> LIST.asJsonObject() =
-        JsonNodeObject(this.toMap(), NodePathRoot).updateNodePath()
+        JsonNodeObject(this.toMap())
 
     override fun fields(node: JsonNode) = if (node !is JsonNodeObject) emptyList() else node._fieldMap.toList()
 
@@ -159,6 +157,16 @@ class KondorJson(
 
     fun <T : Any> wsAutoBody(target: KClass<T>) = converterFor(target).wsAutoBody(compactJsonStyle)
 
+    /**
+     * Convenience function to write the object as JSON to the message body and set the content type.
+     */
+    inline fun <reified T : Any, R : HttpMessage> R.json(t: T): R = with(Body.auto<T>().toLens() of t)
+
+    /**
+     * Convenience function to read an object as JSON from the message body.
+     */
+    inline fun <reified T: Any> HttpMessage.json(): T = Body.auto<T>().toLens()(this)
+
     inline fun <reified T : Any> WsMessage.Companion.auto() = wsAutoBody(T::class)
 
 // converter helpers
@@ -211,36 +219,8 @@ private fun <T, JN : JsonNode> String.fromJson(converter: JsonConverter<T, JN>):
 
 @Suppress("UNCHECKED_CAST")
 private fun <T, JN : JsonNode> Any.toJsonNode(converter: JsonConverter<T, JN>) =
-    converter.toJsonNode(this as T, NodePathRoot)
+    converter.toJsonNode(this as T)
 
-private fun JsonNodeObject.updateNodePath(parentPath: NodePath = NodePathRoot): JsonNodeObject {
-    val updatedFields = _fieldMap.map { (name, field) ->
-        val nodePath = NodePathSegment(name, parentPath)
-        name to when (field) {
-            is JsonNodeObject -> field.updateNodePath(nodePath)
-            is JsonNodeArray -> field.updateNodePath(nodePath)
-            is JsonNodeNull -> field.copy(_path = nodePath)
-            is JsonNodeString -> field.copy(_path = nodePath)
-            is JsonNodeNumber -> field.copy(_path = nodePath)
-            is JsonNodeBoolean -> field.copy(_path = nodePath)
-        }
-    }
-    return this.copy(_fieldMap = updatedFields.toMap(), _path = parentPath)
-}
-
-private fun JsonNodeArray.updateNodePath(parentPath: NodePath = NodePathRoot): JsonNodeArray {
-    val updatedValues = elements.map { item ->
-        when (item) {
-            is JsonNodeObject -> item.updateNodePath(parentPath)
-            is JsonNodeArray -> item.updateNodePath(parentPath)
-            is JsonNodeNull -> item.copy(_path = parentPath)
-            is JsonNodeString -> item.copy(_path = parentPath)
-            is JsonNodeNumber -> item.copy(_path = parentPath)
-            is JsonNodeBoolean -> item.copy(_path = parentPath)
-        }
-    }
-    return this.copy(elements = updatedValues, _path = parentPath)
-}
 
 inline operator fun <reified T : Any> KondorJson.invoke(msg: HttpMessage): T = autoBody<T>().toLens()(msg)
 inline operator fun <reified T : Any, R : HttpMessage> KondorJson.invoke(item: T) = autoBody<T>().toLens().of<R>(item)

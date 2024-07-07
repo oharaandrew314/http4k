@@ -26,16 +26,30 @@ open class ConfigurableJacksonXml(
     override fun <T : Any> asA(input: String, target: KClass<T>): T = mapper.readValue(input, target.java)
     override fun <T : Any> asA(input: InputStream, target: KClass<T>): T = mapper.readValue(input, target.java)
 
+    override fun asInputStream(input: Any): InputStream = mapper.writeValueAsBytes(input).inputStream()
+
+    /**
+     * Convenience function to write the object as XM to the message body and set the content type.
+     */
+    inline fun <reified T : Any, R : HttpMessage> R.xml(t: T): R = with<R>(Body.auto<T>().toLens() of t)
+
+    /**
+     * Convenience function to read an object as XML from the message body.
+     */
+    inline fun <reified T: Any> HttpMessage.xml(): T = Body.auto<T>().toLens()(this)
+
     inline fun <reified T : Any> autoBody(
         description: String? = null,
         contentNegotiation: ContentNegotiation = ContentNegotiation.None,
         contentType: ContentType = defaultContentType
     ): BiDiBodyLensSpec<T> =
-        httpBodyRoot(listOf(Meta(true, "body", ObjectParam, "body", description)), contentType, contentNegotiation)
+        httpBodyRoot(
+            listOf(Meta(true, "body", ObjectParam, "body", description, emptyMap())),
+            contentType,
+            contentNegotiation
+        )
             .map({ it.payload.asString() }, { Body(it) })
             .map({ it.asA<T>() }, { it.asXmlString() })
-
-    inline fun <reified T : Any, R : HttpMessage> R.with(t: T): R = with<R>(Body.auto<T>().toLens() of t)
 }
 
 fun KotlinModule.asConfigurableXml() = asConfigurable(

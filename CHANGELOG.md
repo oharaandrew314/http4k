@@ -3,6 +3,124 @@
 This list is not intended to be all-encompassing - it will document major and breaking API
 changes with their rationale when appropriate:
 
+### v5.25.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-serverless-lambda*** : [Breaking Fix] Incorrect lambda request context variable is passed - we now pass the incoming reqeust object instead of the converted http4k request. If you were using the LAMBDA_REQUEST_KEY, you can just use the request passed into the handler instead.
+
+### v5.24.1.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-serverless-lambda*** : [Fix] AWS adapter throws on invalid URLs.
+- **http4k-testing-webdriver** : [Fix] Base path replacement logic for same-dir-path and dot-path URLs. H/T jweidler
+
+### v5.24.0.0 
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-core** : Allow removal of all queries for a URI. H/T @dhs3000
+- **http4k-format-kondor** : Upgrade to new version of Kondor. H/T @uberto
+- **http4k-testing-strikt** [Break] The upgrade to the latest version drops Java <17 support. If you are still using Java 8, you will need to stick with the previous version of this module.
+
+### v5.23.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-contract** : [Approval test break]  Addition of "nullable" field to every model property. This improves JSON output compatability with various tooling for generating types from the definitions.
+
+### v5.22.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-format-dataframe** : [Break] Move classes to alternative package to not clash with existing format objects. 
+
+### v5.21.2.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-format-dataframe** : [New module] Support for KotlinX DataFrame. 
+
+### v5.21.1.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-multipart*** : [Fix #1113] Disk-backed multipart form field data is now cleaned up when the body is closed, including the parent form directory.
+
+### v5.21.0.0
+- **http4k-*** : Upgrade some dependency versions including Kotlin to v2
+- **http4k-testing-chaos** : [Breaking] Changed Trigger to be a fun interface instead of a typealias. Should be no-op or a simple fix to the type.
+- **http4k-core** : [Possible Break] Renamed `CachingFilters.Request/Response`to `CachingFilters.CacheRequest/CacheResponse`. If you have imports then they may break and need to be updated. 
+
+### v5.20.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-testing-chaos*** : [Unlikely break]: remove Hamkrest dependency so that it does not appear randomly in your projects. If you were accidentally relying on this it will need to be re-added manually.
+
+### v5.19.0.0
+- **http4k-*** : Upgrade some dependency versions, including Kotlin to 1.9.24
+- **http4k-core** : Add support for the timesource typealias `() -> Instant` where a Clock is used. H/T @kwydler
+
+### v5.18.2.0
+- **http4k-core** : Add convenience methods to read bodies from HttpMessages as JSON/XML/CSV etc.. `request.json<MyType>()`
+
+### v5.18.1.0
+- **http4k-core** : Add convenience methods to set common headers to HTTP message.
+
+### v5.18.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-core** : [Behaviour break] We now do not set the legacy Expires header in CachingFilters. Modern caches should use the Cache-Control header instead (max-age).
+
+### v5.17.0.0
+- **http4k-*** : Tweaks to make the K2 compiler happy
+- **http4k** : Added convenience methods to set the body of an HTTP message. The works for both standard body types and with automarshallers. 
+- **http4k-core** : Fix request source in SunHttp. H/T @dkandalov
+- **http4k-contract** : Added top-level MetadataRetrieval to schema objects. H/T @BBB
+- **http4k-format-*** : [Unlikely break] rename `with()` functions on auto-marshallers to match content type, so you can now do `req.json(myObj)` and get the content type and body set in one go. Likewise for other content types
+
+### v5.16.2.0
+- **http4k-*** : Upgrade some dependency versions.
+
+### v5.16.1.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-core**: Add support for surrogate-key headers in EtagSupport. H/T @jason-annadani-springer
+
+### v5.16.0.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-testing-approval** : [Unlikely break] Rename typo in an ApprovalSource instance
+- **http4k-testing-approval** : Addition of optional suffix to the approval file name, and added ApprovalTransformer for varying the compared content from the InputStream
+- **http4k-core** : [Fix #1084] Route name without a beginning / works for everything except static resources. H/T @ArthurS1
+
+### v5.15.1.0
+- **http4k-core** : [Unlikely break] Change to Meta to remove default params 
+- **http4k-testing-approval** : Add ability to add a suffix to the approval file name. 
+
+### v5.15.0.0
+- **http4k-core** : [Unlikely break] Change to Meta to remove default params 
+
+### v5.14.5.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-core** : Make Lenses support metadata passed through the LensBuilder construction methods. H/T @BBB, @ivanmoore @jack-bolles
+- **http4k-testing-tracerbullet** : Account for spans across traces with same spanId. H/T @IvanPavlov1995 
+
+### v5.14.4.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-testing-tracerbullet** : Improve identification of actor for incoming traces.
+- **http4k-client-helidon** : Various fixes H/T @dkandalov
+
+### v5.14.2.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-testing-tracerbullet** : Improve identification of actor for incoming traces.
+- **http4k-client-helidon** : Various fixes H/T @dkandalov
+
+### v5.14.1.0
+- **http4k-*** : Upgrade some dependency versions.
+- **http4k-contract** : Validator optimisation. H/T @dkandalov
+- **http4k-testing-webdriver** : Adding a space between method name and URI when naming spans  H/T @ReinholdsB
+- **http4k-testing-webdriver** : Multipart forms in the webdriver, including sending files. H/T @gypsydave5
+- **http4k-testing-webdriver** : Fix bug in webdriver form submission + a method for relative Uri resolution. H/T @gypsydave5
+
+### v5.14.0.0
+- **http4k-*** : Upgrade some dependency versions, including Kotlin to 1.9.23
+- **http4k-*** : Static handlers serve an index.html file from a subdirectory. H/T @mbcltd
+
+### v5.13.9.0
+- **http4k-*** : Upgrade some dependency versions
+- **http4k-contract** : Implement Kondor Schema creator. H/T @tamj0rd2
+- **http4k-cloudnative** : Read environment properties from yaml resources.  H/T @dzappold
+- **http4k-webdriver** : [Fix] Bug when submitting with inputs of type submit. H/T @gypsydave5
+- **http4k-testing-approval** : Allow adding a suffix to an approval test file name. H/T @becky-sequence
+
+### v5.13.8.0
+- **http4k-*** : Upgrade some dependency versions
+- **http4k-format-kondor** : Expose converterFor method. H/T @tamj0rd2
+
 ### v5.13.7.0
 - **http4k-*** : Upgrade some dependency versions
 - **http4k-contract** : Allow user to provide schema creation implementation. H/T @tamj0rd2
@@ -127,12 +245,6 @@ changes with their rationale when appropriate:
 - **http4k-*** : Upgrade some dependency versions
 - **http4k-core-** : [Fix] FollowRedirects now remove host header
 - **http4k-testing-webdriver-** : Ability to inject clock into the Webdriver
-
-### v5.11.0.0
-
-- **http4k-format-jade4j** : [Breaking] This module has been renamed due to the library Jade4J becoming Pug4J. Migration should be a no-op apart from renaming
-  your templates from .jade to .pug. Please see Pug4j docs for anything else.
-- **http4k-format-pug4j** : [New module] Replacement for Jade4j
 
 ### v5.10.1.0
 

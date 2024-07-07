@@ -5,7 +5,7 @@ description: Feature overview of the http4k-client modules
 
 ```kotlin
 dependencies {
-    implementation(platform("org.http4k:http4k-bom:5.13.7.0"))
+    implementation(platform("org.http4k:http4k-bom:5.25.0.0"))
     
     // Java (for development only):
     implementation("org.http4k:http4k-core")
@@ -41,8 +41,14 @@ dependencies {
 
 ### HTTP
 Supported HTTP client adapter APIs are wrapped to provide an `HttpHandler` interface in 1 LOC.
+Since each client acts as an `HttpHandler`, it can be decorated with various `Filter` implementations, such as those available in `ClientFilters`.
+This allows handling cross-cutting concerns independently of a specific client implementation, greatly facilitating testing.
 
 Activate streaming mode by passing a `BodyMode` (default is non-streaming).
+
+`ClientFilters` offers a collection of filters that can be applied to an `HttpHandler` to manage common cross-cutting concernsas a chain of filters. 
+This chain allows for the easy configuration and management of complex processing sequences.
+`ClientFilters` includes specific filters that enable frequently needed functionalities like authentication, caching, or compression with minimal configuration.
 
 These examples are for the Apache HTTP client, but the API is similar for the others:
 

@@ -39,9 +39,11 @@ class FakeHttpServletRequest(private val request: Request) :
     override fun getScheme() = request.uri.scheme
 }
 
+@Suppress("DEPRECATION", "DeprecatedCallableAddReplaceWith")
 class FakeHttpServletResponse : HttpServletResponse by mock() {
     var http4k = Response(OK)
 
+    @Deprecated("Deprecated in Java")
     override fun setStatus(sc: Int, sm: String) {
         http4k = http4k.status(Status(sc, sm))
     }

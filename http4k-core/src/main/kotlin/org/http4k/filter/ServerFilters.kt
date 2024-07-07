@@ -28,6 +28,7 @@ import org.http4k.lens.Header.CONTENT_TYPE
 import org.http4k.lens.Lens
 import org.http4k.lens.LensFailure
 import org.http4k.lens.RequestContextLens
+import org.http4k.lens.bearerToken
 import org.http4k.routing.ResourceLoader
 import org.http4k.routing.ResourceLoader.Companion.Classpath
 import java.io.PrintWriter
@@ -60,25 +61,28 @@ object ServerFilters {
                 val response = if (it.method == OPTIONS) Response(OK) else next(it)
 
                 val origin = it.header("Origin")
+
                 val allowedOrigin = when {
                     policy.originPolicy is AllowAllOriginPolicy -> "*"
                     origin != null && policy.originPolicy(origin) -> origin
-                    else -> "null"
+                    else -> null
                 }
 
-                response.with(
-                    Header.required("access-control-allow-origin") of allowedOrigin,
-                    Header.required("access-control-allow-headers") of policy.headers.joined(),
-                    Header.required("access-control-allow-methods") of policy.methods.map { method -> method.name }
-                        .joined(),
-                    { res -> if (policy.credentials) res.header("access-control-allow-credentials", "true") else res },
-                    { res ->
-                        res.takeIf { policy.exposedHeaders.isNotEmpty() }
-                            ?.header("access-control-expose-headers", policy.exposedHeaders.joined())
-                            ?: res
-                    },
-                    { res -> policy.maxAge?.let { maxAge -> res.header("access-control-max-age", "$maxAge") } ?: res }
-                )
+                allowedOrigin?.let {
+                    response.with(
+                        Header.required("access-control-allow-origin") of allowedOrigin,
+                        Header.required("access-control-allow-headers") of policy.headers.joined(),
+                        Header.required("access-control-allow-methods") of policy.methods.map { method -> method.name }
+                            .joined(),
+                        { res -> if (policy.credentials) res.header("access-control-allow-credentials", "true") else res },
+                        { res ->
+                            res.takeIf { policy.exposedHeaders.isNotEmpty() }
+                                ?.header("access-control-expose-headers", policy.exposedHeaders.joined())
+                                ?: res
+                        },
+                        { res -> policy.maxAge?.let { maxAge -> res.header("access-control-max-age", "$maxAge") } ?: res }
+                    )
+                } ?: response
             }
         }
     }
@@ -199,12 +203,6 @@ object ServerFilters {
                     ?: Response(UNAUTHORIZED)
             }
         }
-
-        private fun Request.bearerToken(): String? = header("Authorization")
-            ?.trim()
-            ?.takeIf { it.startsWith("Bearer") }
-            ?.substringAfter("Bearer")
-            ?.trim()
     }
 
     /**
@@ -243,8 +241,9 @@ object ServerFilters {
      * This is required when using lenses to automatically unmarshall inbound requests.
      * Note that LensFailures from unmarshalling upstream Response objects are NOT caught to avoid incorrect server behaviour.
      */
-    object CatchLensFailure :
-        Filter by CatchLensFailure({ lensFailure -> Response(BAD_REQUEST.description(lensFailure.failures.joinToString("; "))) })
+    val CatchLensFailure = CatchLensFailure { lensFailure ->
+        Response(BAD_REQUEST.description(lensFailure.failures.joinToString("; ")))
+    }
 
     /**
      * Converts Lens extraction failures into correct HTTP responses (Bad Requests/UnsupportedMediaType).

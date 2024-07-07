@@ -25,6 +25,7 @@ class TestWebsocket(response: WsResponse) : PushPullAdaptingWebSocket() {
         }
 
         override fun close(status: WsStatus) {
+            triggerClose(status)
             client.triggerClose(status)
         }
     }
