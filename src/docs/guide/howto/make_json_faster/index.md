@@ -21,11 +21,11 @@ kotlinx.serialization is a very fast and efficient module, but there are some ca
 
 ```kotlin
 plugins {
-    kotlin("plugin.serialization") version "1.9.22"
+    kotlin("plugin.serialization") version "<kotlin version>"
 }
 
 dependencies {
-    implementation(platform("org.http4k:http4k-bom:5.14.1.0"))
+    implementation(platform("org.http4k:http4k-bom:5.25.0.0"))
     implementation("org.http4k:http4k-format-kotlinx-serialization")
 }
 ```
@@ -46,11 +46,11 @@ However, it will bring the smallest performance benefit out of these options.
 
 ```kotlin
 dependencies {
-    implementation(platform("org.http4k:http4k-bom:5.14.1.0"))
+    implementation(platform("org.http4k:http4k-bom:5.25.0.0"))
     implementation("org.http4k:http4k-format-moshi") {
         exclude("org.jetbrains.kotlin", "kotlin-reflect") // Exclude kotlin-reflect
     }
-    implementation("dev.zacsweers.moshix:moshi-metadata-reflect:0.23.0")
+    implementation("dev.zacsweers.moshix:moshi-metadata-reflect:<moshi metadata version>")
 }
 ```
 
@@ -72,7 +72,7 @@ It requires a gradle plugin, several dependencies, and depends on code that only
 ```kotlin
 plugins {
     // The KSP plugin is required to generate the adapters at compile time
-    id("com.google.devtools.ksp") version "1.9.22-1.0.16"
+    id("com.google.devtools.ksp") version "<ksp plugin version version>"
 }
 
 dependencies {
@@ -81,8 +81,8 @@ dependencies {
     }
     
     // Get the Kotshi runtime library and configure KSP to generate the adapters
-    implementation("se.ansman.kotshi:api:2.15.0")
-    ksp("se.ansman.kotshi:compiler:2.15.0")
+    implementation("se.ansman.kotshi:api:<kotshi version>")
+    ksp("se.ansman.kotshi:compiler:<kotshi version>")
 }
 ```
 

@@ -91,6 +91,8 @@ open class ConfigurableJackson(
 
     inline fun <reified T : Any> JsonNode.asA(): T = mapper.convertValue(this)
 
+    override fun asInputStream(input: Any): InputStream = mapper.writeValueAsBytes(input).inputStream()
+
     inline fun <reified T : Any> WsMessage.Companion.auto() = WsMessage.string().map(mapper.read<T>(), mapper.write())
 
     inline fun <reified T : Any> Body.Companion.auto(
@@ -106,7 +108,15 @@ open class ConfigurableJackson(
     ): BiDiBodyLensSpec<T> =
         httpBodyLens(description, contentNegotiation, contentType).map(mapper.read(), mapper.write())
 
-    inline fun <reified T : Any, R : HttpMessage> R.with(t: T): R = with<R>(Body.auto<T>().toLens() of t)
+    /**
+     * Convenience function to write the object as JSON to the message body and set the content type.
+     */
+    inline fun <reified T : Any, R : HttpMessage> R.json(t: T): R = with(Body.auto<T>().toLens() of t)
+
+    /**
+     * Convenience function to read an object as JSON from the message body.
+     */
+    inline fun <reified T: Any> HttpMessage.json(): T = Body.auto<T>().toLens()(this)
 
     // views
     fun <T : Any, V : Any> T.asCompactJsonStringUsingView(v: KClass<V>): String =

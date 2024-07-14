@@ -12,6 +12,7 @@ import org.http4k.core.with
 import org.http4k.lens.Header
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.opentest4j.AssertionFailedError
+import java.io.ByteArrayInputStream
 import java.io.InputStream
 
 /**
@@ -30,38 +31,38 @@ interface Approver {
 class NamedResourceApprover(
     private val name: String,
     private val approvalContent: ApprovalContent,
-    private val approvalSource: ApprovalSource
+    private val approvalSource: ApprovalSource,
+    private val transformer: ApprovalTransformer<*> = ApprovalTransformer.StringWithNormalisedLineEndings()
 ) : Approver {
 
-    private val matchAllLineEndings = "\\r\\n?".toRegex()
-    private fun String.normalizeLineEndings() = replace(matchAllLineEndings, "\n")
-
-    override fun withNameSuffix(suffix: String): Approver {
-        return NamedResourceApprover(name = "$name.$suffix", approvalContent = approvalContent, approvalSource = approvalSource)
-    }
+    override fun withNameSuffix(suffix: String) = NamedResourceApprover(
+        name = "$name.$suffix",
+        approvalContent = approvalContent,
+        approvalSource = approvalSource
+    )
 
     override fun <T : HttpMessage> assertApproved(httpMessage: T) {
         val approved = approvalSource.approvedFor(name)
+        val actual = approvalSource.actualFor(name)
+        val actualBytes = approvalContent(httpMessage).readBytes()
 
         with(approved.input()) {
-            val actual = approvalSource.actualFor(name)
+            actual.output() // ensure the actual is removed
 
             when (this) {
-                null -> with(approvalContent(httpMessage)) {
-                    if (available() > 0) {
-                        copyTo(actual.output())
+                null -> when {
+                    actualBytes.isNotEmpty() -> {
+                        actual.output().write(actualBytes)
                         throw ApprovalFailed("No approved content found", actual, approved)
                     }
+
+                    else -> {}
                 }
 
                 else -> try {
-                    assertEquals(
-                        approvalContent(this).reader().use { it.readText().normalizeLineEndings().trimEnd() },
-                        approvalContent(httpMessage).reader().readText().normalizeLineEndings().trimEnd()
-                    )
-                    actual.output()
+                    assertEquals(transformer(approvalContent(this)), transformer(ByteArrayInputStream(actualBytes)))
                 } catch (e: AssertionError) {
-                    approvalContent(httpMessage).copyTo(actual.output())
+                    ByteArrayInputStream(actualBytes).copyTo(actual.output())
                     throw AssertionError(ApprovalFailed("Mismatch", actual, approved).message + "\n" + e.message)
                 }
             }

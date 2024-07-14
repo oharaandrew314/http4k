@@ -82,4 +82,44 @@ class WebsocketTest {
 
         assertThat(received, equalTo(listOf(message, message)))
     }
+
+    @Test
+    fun `server-side close triggers all close handlers`() {
+        val consumer = TestConsumer()
+        val wsHandler: WsHandler = {
+            WsResponse {
+                consumer(it)
+            }
+        }
+
+        val client = wsHandler(Request(GET, "/")).wsOrThrow()
+
+        var clientClosed = false
+        client.onClose { clientClosed = true }
+
+        consumer.websocket.close()
+
+        assertThat(consumer.closed.get(), equalTo(WsStatus.NORMAL))
+        assertThat(clientClosed, equalTo(true))
+    }
+
+    @Test
+    fun `client-side close triggers all close handlers`() {
+        val consumer = TestConsumer()
+        val wsHandler: WsHandler = {
+            WsResponse {
+                consumer(it)
+            }
+        }
+
+        val client = wsHandler(Request(GET, "/")).wsOrThrow()
+
+        var clientClosed = false
+        client.onClose { clientClosed = true }
+
+        client.close()
+
+        assertThat(consumer.closed.get(), equalTo(WsStatus.NORMAL))
+        assertThat(clientClosed, equalTo(true))
+    }
 }
