@@ -52,9 +52,13 @@ abstract class WebsocketServerContract(
             "/hello" bind websockets(
                 "/{name}" bind { req: Request ->
                     WsResponse { ws ->
+                        println("invoke endpoint")
                         val name = req.path("name")!!
                         ws.send(WsMessage(name))
-                        ws.onMessage { ws.send(WsMessage("goodbye $name".byteInputStream())) }
+                        ws.onMessage {
+                            println("server received $it")
+                            ws.send(WsMessage("goodbye $name".byteInputStream()))
+                        }
                         ws.onClose { println("$name is closing") }
                     }
                 }
@@ -95,11 +99,11 @@ abstract class WebsocketServerContract(
 
     @Test
     fun `can send and receive messages from socket`() {
-        val client = wsClient(Uri.of("/hello/bob")).wsOrThrow().blocking()
+        val ws = wsClient(Uri.of("/hello/bob")).wsOrThrow().blocking()
 
-        client.send(WsMessage("hello"))
+        ws.send(WsMessage("hello"))
         assertThat(
-            client.received().take(2).toList(),
+            ws.received().take(2).toList(),
             equalTo(listOf(WsMessage("bob"), WsMessage("goodbye bob".byteInputStream())))
         )
     }

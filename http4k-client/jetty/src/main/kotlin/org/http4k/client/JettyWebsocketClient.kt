@@ -9,54 +9,22 @@ import org.eclipse.jetty.websocket.client.ClientUpgradeRequest
 import org.eclipse.jetty.websocket.client.WebSocketClient
 import org.http4k.client.PreCannedJettyHttpClients.defaultJettyHttpClient
 import org.http4k.core.Headers
-import org.http4k.core.Method.GET
 import org.http4k.core.Request
 import org.http4k.core.StreamBody
-import org.http4k.core.Uri
 import org.http4k.core.toParametersMap
 import org.http4k.websocket.PushPullAdaptingWebSocket
 import org.http4k.websocket.Websocket
-import org.http4k.websocket.WsClient
 import org.http4k.websocket.WsHandler
-//import org.http4k.websocket.WsConsumer
 import org.http4k.websocket.WsMessage
 import org.http4k.websocket.WsResponse
 import org.http4k.websocket.WsStatus
 import java.net.URI
 import java.nio.ByteBuffer
 import java.time.Duration
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 object JettyWebsocketClient {
-
-//    fun blocking(
-//        uri: Uri,
-//        headers: Headers = emptyList(),
-//        timeout: Duration = Duration.of(5, ChronoUnit.SECONDS),
-//        wsClient: WebSocketClient = WebSocketClient(defaultJettyHttpClient())
-//    ): WsClient {
-//        if (!wsClient.isRunning) wsClient.start()
-//
-//        return JettyBlockingWebsocket(uri, headers, timeout, wsClient).awaitConnected()
-//    }
-//
-//    fun nonBlocking(
-//        uri: Uri,
-//        headers: Headers = emptyList(),
-//        timeout: Duration = Duration.ZERO,
-//        wsClient: WebSocketClient = WebSocketClient(defaultJettyHttpClient()),
-//        onError: (Throwable) -> Unit = {},
-//        onConnect: () -> Unit = {}
-//    ): Websocket {
-//        if (!wsClient.isRunning) wsClient.start()
-//
-//        return JettyNonBlockingWebsocket(uri, headers, timeout, wsClient, onError, onConnect)
-//    }
 
     operator fun invoke(
         timeout: Duration = Duration.ZERO,
@@ -79,37 +47,6 @@ object JettyWebsocketClient {
 
     }
 }
-
-/*private fun client(
-    uri: Uri,
-    headers: Headers,
-    timeout: Duration,
-    client: WebSocketClient
-): Ws : WsClient {
-    private val connected = CompletableFuture<WsClient>()
-
-    private val queue = LinkedBlockingQueue<() -> WsMessage?>()
-
-    private val websocket =
-        JettyNonBlockingWebsocket(uri, headers, timeout, client, connected::completeExceptionally) { ws ->
-            ws.onMessage { queue += { it } }
-            ws.onError { queue += { throw it } }
-            ws.onClose { queue += { null } }
-            connected.complete(this)
-        }
-
-    fun awaitConnected(): WsClient = try {
-        connected.get()
-    } catch (e: ExecutionException) {
-        throw (e.cause ?: e)
-    }
-
-    override fun received(): Sequence<WsMessage> = generateSequence { queue.take()() }
-
-    override fun close(status: WsStatus) = websocket.close(status)
-
-    override fun send(message: WsMessage) = websocket.send(message)
-}*/
 
 private fun client(
     request: Request,

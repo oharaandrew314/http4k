@@ -80,18 +80,20 @@ private fun createServer(
 ) = object : WebSocketServer(address, drafts) {
 
     override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
-//        val ws = conn.getAttachment<Websocket>()
-//        ws.onClose {
+        val ws = conn.adapter()!!
+        ws.onClose {
+            println("server on Close: $it")
 //            conn.close(it.code, it.description)
-//        }
-//        ws.onMessage {
-//            when (it.mode) {
-//                WsMessage.Mode.Text -> conn.send(it.bodyString())
-//                WsMessage.Mode.Binary -> conn.send(it.body.payload)
-//            }
-//        }
+        }
+//        ws.
+
+        ws.onMessage {
+            println("server on message: $it")
+//            ws.triggerMessage(it)
+        }
         // TODO handle onError?
     }
+
 
     override fun onWebsocketHandshakeReceivedAsServer(conn: WebSocket, draft: Draft, request: ClientHandshake): ServerHandshakeBuilder {
         val headers = request.iterateHttpFields()
@@ -105,23 +107,11 @@ private fun createServer(
             .source(RequestSource(conn.remoteSocketAddress.hostString, conn.remoteSocketAddress.port))
 
         when(val response = wsHandler(upgradeRequest)) {
-            is WsResponse.Accept -> {
-                conn.setAttachment(response.websocket) // TODO handle sub-protocol?
-                response.websocket.onClose {
-                    conn.close(it.code, it.description)
-                }
-                response.websocket.onMessage {
-                    when (it.mode) {
-                        WsMessage.Mode.Text -> conn.send(it.bodyString())
-                        WsMessage.Mode.Binary -> conn.send(it.body.payload)
-                    }
-                }
-                return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
-            }
-            is WsResponse.Refuse -> {
-                throw InvalidDataException(CloseFrame.POLICY_VALIDATION)
-            }
+            is WsResponse.Accept -> conn.setAttachment(response.websocket) // TODO handle sub-protocol?
+            is WsResponse.Refuse -> throw InvalidDataException(CloseFrame.POLICY_VALIDATION)
         }
+
+        return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
     }
 
     override fun onClose(conn: WebSocket, code: Int, reason: String?, remote: Boolean) {
