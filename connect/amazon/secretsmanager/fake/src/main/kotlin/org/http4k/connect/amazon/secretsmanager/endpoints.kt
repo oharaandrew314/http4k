@@ -8,6 +8,7 @@ import org.http4k.connect.amazon.secretsmanager.action.CreateSecret
 import org.http4k.connect.amazon.secretsmanager.action.CreatedSecret
 import org.http4k.connect.amazon.secretsmanager.action.DeleteSecret
 import org.http4k.connect.amazon.secretsmanager.action.DeletedSecret
+import org.http4k.connect.amazon.secretsmanager.action.DescribeSecret
 import org.http4k.connect.amazon.secretsmanager.action.GetSecretValue
 import org.http4k.connect.amazon.secretsmanager.action.ListSecrets
 import org.http4k.connect.amazon.secretsmanager.action.PutSecretValue
@@ -66,10 +67,16 @@ fun AwsJsonFake.getSecret(secrets: Storage<StoredSecretValue>) = route<GetSecret
         }
 }
 
+fun AwsJsonFake.describeSecret(secrets: Storage<StoredSecretValue>) = route<DescribeSecret> { req ->
+    val secretId = req.SecretId.resourceId()
+
+    secrets[secretId.value]?.toSecret(secretId)
+}
+
 fun AwsJsonFake.listSecrets(secrets: Storage<StoredSecretValue>) = route<ListSecrets> {
-    Secrets(secrets.keySet("").map {
-        Secret(SecretId.of(it).toArn(), it)
-    })
+    secrets.keySet("")
+        .map { secrets[it]!!.toSecret(SecretId.of(it)) }
+        .let(::Secrets)
 }
 
 fun AwsJsonFake.putSecret(
@@ -113,12 +120,18 @@ private fun SecretId.toArn() = ARN.of(
     SecretsManager.awsService,
     Region.of("us-east-1"),
     AwsAccount.of("0"),
-    "secret", this
+    "secret", resourceId().value
 )
 
-fun SecretId.resourceId() = SecretId.of(
+private fun SecretId.resourceId() = SecretId.of(
     when {
         value.startsWith("arn") -> value.split(":").last()
         else -> value
     }
+)
+
+private fun StoredSecretValue.toSecret(nameOrArn: SecretId) = Secret(
+    ARN = nameOrArn.toArn(),
+    Name = nameOrArn.resourceId().value,
+    CreatedDate = createdAt
 )

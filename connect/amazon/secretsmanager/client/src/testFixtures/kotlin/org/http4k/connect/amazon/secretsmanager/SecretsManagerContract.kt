@@ -35,6 +35,9 @@ interface SecretsManagerContract : AwsContract {
             val list = sm.listSecrets().successValue()
             assertThat(list.SecretList.any { it.ARN == creation.ARN }, equalTo(true))
 
+            val described = sm.describeSecret(SecretId.of(nameOrArn)).successValue()
+            assertThat(described, equalTo(list.first()))
+
             val lookupCreated = sm.getSecretValue(SecretId.of(nameOrArn)).successValue()
             assertThat(lookupCreated.SecretString, present(equalTo(secretValue)))
 
@@ -58,7 +61,7 @@ interface SecretsManagerContract : AwsContract {
     }
 }
 
-fun SecretId.resourceId() = SecretId.of(
+private fun SecretId.resourceId() = SecretId.of(
     when {
         value.startsWith("arn") -> value.split(":").last()
         else -> value

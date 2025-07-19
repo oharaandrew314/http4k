@@ -36,6 +36,7 @@ class FakeSecretsManager(
             api.createSecret(secrets, clock),
             api.deleteSecret(secrets),
             api.getSecret(secrets),
+            api.describeSecret(secrets),
             api.listSecrets(secrets),
             api.putSecret(secrets, clock),
             api.updateSecret(secrets, clock)
