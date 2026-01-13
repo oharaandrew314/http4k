@@ -1,0 +1,56 @@
+{
+  "DockerId": "0123456789abcdef",
+  "Name": "app",
+  "DockerName": "dockerName",
+  "Image": "sample:latest",
+  "ImageID": "sha256:0123456789abcdef",
+  "Labels": {
+    "com.amazonaws.ecs.cluster": "arn:aws:ecs:us-east-1:0123456789:cluster/myCluster",
+    "com.amazonaws.ecs.container-name": "app",
+    "com.amazonaws.ecs.task-arn": "arn:aws:ecs:us-east-1:1234567890:task/myService/myTaskId",
+    "com.amazonaws.ecs.task-definition-family": "myFamily",
+    "com.amazonaws.ecs.task-definition-version": "8"
+  },
+  "DesiredStatus": "RUNNING",
+  "KnownStatus": "RUNNING",
+  "Limits": {
+    "CPU": 2
+  },
+  "CreatedAt": "2025-12-17T19:56:30.091699251Z",
+  "StartedAt": "2025-12-17T19:56:30.091699251Z",
+  "Type": "NORMAL",
+  "Health": {
+    "status": "UNKNOWN",
+    "statusSince": "2025-12-17T19:56:30.09237259Z",
+    "exitCode": 1,
+    "output": "fun stuff"
+  },
+  "LogDriver": "awslogs",
+  "LogOptions": {
+    "awslogs-group": "service-logs",
+    "awslogs-region": "us-east-1",
+    "awslogs-stream": "ecs/app/myTaskId",
+    "mode": "non-blocking"
+  },
+  "ContainerARN": "arn:aws:ecs:us-east-1:1234567890:container/myService/myTaskId/868c105d-ec7b-4bb6-a29f-91414569f180",
+  "Networks": [
+    {
+      "NetworkMode": "awsvpc",
+      "IPv4Addresses": [
+        "10.192.11.118"
+      ],
+      "AttachmentIndex": 0,
+      "MACAddress": "ab:cd:ef:12:34:56",
+      "IPv4SubnetCIDRBlock": "10.192.11.0/24",
+      "DomainNameServers": [
+        "10.192.0.2"
+      ],
+      "DomainNameSearchList": [
+        "ec2.internal"
+      ],
+      "PrivateDNSName": "ip-10-192-11-118.ec2.internal",
+      "SubnetGatewayIpv4Address": "10.192.11.1/24"
+    }
+  ],
+  "Snapshotter": "overlayfs"
+}

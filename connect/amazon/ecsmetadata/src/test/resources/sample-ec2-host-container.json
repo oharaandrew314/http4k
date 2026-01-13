@@ -1,0 +1,45 @@
+{
+  "DockerId": "dockerId",
+  "Name": "test",
+  "DockerName": "dockerName",
+  "Image": "debian",
+  "ImageID": "sha256:abcdef0123456",
+  "Labels": {
+    "com.amazonaws.ecs.cluster": "cluster-name",
+    "com.amazonaws.ecs.container-name": "test",
+    "com.amazonaws.ecs.task-arn": "arn:aws:ecs:us-east-1:01234567890:task/cluster-name/taskid",
+    "com.amazonaws.ecs.task-definition-family": "task-family",
+    "com.amazonaws.ecs.task-definition-version": "67"
+  },
+  "DesiredStatus": "RUNNING",
+  "KnownStatus": "RUNNING",
+  "Limits": {
+    "CPU": 2,
+    "Memory": 0
+  },
+  "CreatedAt": "2026-01-13T15:48:19.115620546Z",
+  "StartedAt": "2026-01-13T15:48:19.300145676Z",
+  "Type": "NORMAL",
+  "Volumes": [
+    {
+      "Source": "/var/log/ecs/exec/abcdef1234567890/test",
+      "Destination": "/var/log/amazon/ssm"
+    }
+  ],
+  "LogDriver": "awslogs",
+  "LogOptions": {
+    "awslogs-group": "log-group",
+    "awslogs-region": "us-east-1",
+    "awslogs-stream": "app/test/abcdef01234567890",
+    "mode": "non-blocking"
+  },
+  "ContainerARN": "arn:aws:ecs:us-east-1:01234567890:container/cluster-name/123/ec2de4f5-65f9-4d2c-bf78-354dac1628dd",
+  "Networks": [
+    {
+      "NetworkMode": "host",
+      "IPv4Addresses": [
+        ""
+      ]
+    }
+  ]
+}

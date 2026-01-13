@@ -1,0 +1,72 @@
+{
+  "Cluster": "cluster",
+  "TaskARN": "arn:aws:ecs:us-east-1:1234567890:task/service/12345678",
+  "Family": "myFamily",
+  "Revision": "1",
+  "DesiredStatus": "RUNNING",
+  "KnownStatus": "RUNNING",
+  "Limits": {
+    "CPU": 0.25,
+    "Memory": 512
+  },
+  "PullStartedAt": "2025-11-30T12:14:19.583664619Z",
+  "PullStoppedAt": "2025-11-30T12:14:23.116594205Z",
+  "AvailabilityZone": "us-east-1a",
+  "LaunchType": "EC2",
+  "Containers": [
+    {
+      "DockerId": "0123456789abcdef",
+      "Name": "app",
+      "DockerName": "dockername",
+      "Image": "sample:latest",
+      "ImageID": "sha256:0123456789abcdef",
+      "Ports": [
+        {
+          "ContainerPort": 88,
+          "Protocol": "tcp",
+          "HostPort": 32769,
+          "HostIp": "10.0.0.1"
+        }
+      ],
+      "Labels": {
+        "com.amazonaws.ecs.cluster": "cluster",
+        "com.amazonaws.ecs.container-name": "app",
+        "com.amazonaws.ecs.task-arn": "arn:aws:ecs:us-east-1:1234567890:task/service/12345678",
+        "com.amazonaws.ecs.task-definition-family": "myFamily",
+        "com.amazonaws.ecs.task-definition-version": "1"
+      },
+      "DesiredStatus": "RUNNING",
+      "KnownStatus": "RUNNING",
+      "Limits": {
+        "CPU": 2,
+        "Memory": 0
+      },
+      "CreatedAt": "2025-11-30T12:14:23.131248415Z",
+      "StartedAt": "2025-11-30T12:14:28.105989689Z",
+      "Type": "NORMAL",
+      "Health": {
+        "status": "HEALTHY",
+        "statusSince": "2025-11-30T12:14:58.54837945Z",
+        "output": "  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current\n                                 Dload  Upload   Total   Spent    Left  Speed\n\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\r  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0\n"
+      },
+      "LogDriver": "awslogs",
+      "LogOptions": {
+        "awslogs-group": "service-logs",
+        "awslogs-region": "us-east-1",
+        "awslogs-stream": "ecs/app/12345678",
+        "mode": "non-blocking"
+      },
+      "ContainerARN": "arn:aws:ecs:us-east-1:1234567890:container/myService/12345678/18cf05f5-0544-41c5-989f-8430828b8753",
+      "Networks": [
+        {
+          "NetworkMode": "bridge",
+          "IPv4Addresses": [
+            "172.17.0.2"
+          ]
+        }
+      ]
+    }
+  ],
+  "VPCID": "vpc-0123456789asbcdef",
+  "ServiceName": "service"
+}
