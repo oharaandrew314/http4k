@@ -2,10 +2,23 @@ package org.http4k.connect.amazon.cloudwatch
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
-import com.natpryce.hamkrest.greaterThan
 import com.natpryce.hamkrest.hasSize
 import com.natpryce.hamkrest.isEmpty
 import org.http4k.connect.amazon.AwsContract
+import org.http4k.connect.amazon.cloudwatch.action.DeleteAlarms
+import org.http4k.connect.amazon.cloudwatch.action.DescribeAlarms
+import org.http4k.connect.amazon.cloudwatch.action.DescribeAlarmsForMetric
+import org.http4k.connect.amazon.cloudwatch.action.DisableAlarmActions
+import org.http4k.connect.amazon.cloudwatch.action.EnableAlarmActions
+import org.http4k.connect.amazon.cloudwatch.action.GetMetricData
+import org.http4k.connect.amazon.cloudwatch.action.ListMetrics
+import org.http4k.connect.amazon.cloudwatch.action.ListTagsForResource
+import org.http4k.connect.amazon.cloudwatch.action.PutCompositeAlarm
+import org.http4k.connect.amazon.cloudwatch.action.PutMetricAlarm
+import org.http4k.connect.amazon.cloudwatch.action.PutMetricData
+import org.http4k.connect.amazon.cloudwatch.action.SetAlarmState
+import org.http4k.connect.amazon.cloudwatch.action.TagResource
+import org.http4k.connect.amazon.cloudwatch.action.UntagResource
 import org.http4k.connect.amazon.cloudwatch.model.AlarmName
 import org.http4k.connect.amazon.cloudwatch.model.AlarmState
 import org.http4k.connect.amazon.cloudwatch.model.AlarmType
@@ -19,6 +32,7 @@ import org.http4k.connect.amazon.cloudwatch.model.MetricUnit
 import org.http4k.connect.amazon.cloudwatch.model.Namespace
 import org.http4k.connect.amazon.cloudwatch.model.Statistic
 import org.http4k.connect.amazon.core.model.Tag
+import org.http4k.connect.model.Timestamp
 import org.http4k.connect.successValue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -30,7 +44,7 @@ interface CloudWatchContract : AwsContract {
     @Test
     fun `metric alarm lifecycle`() {
         val alarmName = AlarmName.of("http4k-connect-test-alarm")
-        cloudWatch.putMetricAlarm(
+        cloudWatch(PutMetricAlarm(
             AlarmName = alarmName,
             AlarmDescription = "Alarm for testing purposes",
             ActionsEnabled = false,
@@ -42,37 +56,36 @@ interface CloudWatchContract : AwsContract {
             Namespace = Namespace.of("http4k-connect-test-alarms"),
             Period = 60,
             Threshold = 1.0,
-        )
+        )).successValue()
+
         try {
-            val metricAlarms = cloudWatch.describeAlarms().successValue().MetricAlarms
-            assertNotNull(metricAlarms)
-            assertThat(metricAlarms, hasSize(equalTo(1)))
-            assertThat(metricAlarms.first().AlarmName, equalTo(alarmName))
-            assertThat(metricAlarms.first().ActionsEnabled, equalTo(false))
-            cloudWatch.enableAlarmActions(
+            val metricAlarm = cloudWatch.waitForMetricAlarmCreation(alarmName)
+            assertThat(metricAlarm.AlarmName, equalTo(alarmName))
+            assertThat(metricAlarm.ActionsEnabled, equalTo(false))
+            cloudWatch(EnableAlarmActions(
                 AlarmNames = listOf(alarmName),
-            )
-            cloudWatch.setAlarmState(
+            ))
+            cloudWatch(SetAlarmState(
                 AlarmName = alarmName,
                 StateValue = AlarmState.ALARM,
                 StateReason = "Test alarm state ALARM",
-            )
-            val alarmsDescribedForMetric = cloudWatch.describeAlarmsForMetric(
+            ))
+            val alarmsDescribedForMetric = cloudWatch(DescribeAlarmsForMetric(
                 MetricName = MetricName.of("htt4k-connect-test-metric"),
                 Namespace = Namespace.of("http4k-connect-test-alarms"),
-            ).successValue().MetricAlarms
+            )).successValue().MetricAlarms
             assertThat(alarmsDescribedForMetric, hasSize(equalTo(1)))
             assertThat(alarmsDescribedForMetric.first().AlarmName, equalTo(alarmName))
             assertThat(alarmsDescribedForMetric.first().ActionsEnabled, equalTo(true))
             assertThat(alarmsDescribedForMetric.first().StateValue, equalTo(AlarmState.ALARM))
         } finally {
-            cloudWatch.deleteAlarms(
+            cloudWatch(DeleteAlarms(
                 AlarmNames = listOf(alarmName),
-            )
+            )).successValue()
             assertThat(
-                cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
-                ).successValue().MetricAlarms.orEmpty(),
+                cloudWatch(DescribeAlarms(
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
+                )).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
         }
@@ -81,43 +94,40 @@ interface CloudWatchContract : AwsContract {
     @Test
     fun `composite alarm lifecycle`() {
         val alarmName = AlarmName.of("http4k-connect-test-alarm")
-        cloudWatch.putCompositeAlarm(
+        cloudWatch(PutCompositeAlarm(
             AlarmName = alarmName,
-            AlarmRule = "false",
+            AlarmRule = "FALSE",
             AlarmDescription = "Alarm for testing purposes, set to false",
             ActionsEnabled = true,
-        )
+        )).successValue()
+
         try {
-            val compositeAlarms = cloudWatch.describeAlarms(
-                AlarmTypes = listOf(AlarmType.COMPOSITE_ALARM)
-            ).successValue().CompositeAlarms
-            assertNotNull(compositeAlarms)
-            assertThat(compositeAlarms, hasSize(equalTo(1)))
-            assertThat(compositeAlarms.first().AlarmName, equalTo(alarmName))
-            assertThat(compositeAlarms.first().ActionsEnabled, equalTo(true))
-            val alarmsDescribedForMetric = cloudWatch.describeAlarmsForMetric(
+            val compositeAlarm = cloudWatch.waitForCompositeAlarmCreation(alarmName)
+            assertThat(compositeAlarm.AlarmName, equalTo(alarmName))
+            assertThat(compositeAlarm.ActionsEnabled, equalTo(true))
+            val alarmsDescribedForMetric = cloudWatch(DescribeAlarmsForMetric(
                 MetricName = MetricName.of("htt4k-connect-test-metric"),
                 Namespace = Namespace.of("http4k-connect-test-alarms"),
-            ).successValue().MetricAlarms
+            )).successValue().MetricAlarms
             assertThat(alarmsDescribedForMetric, hasSize(equalTo(0)))
-            cloudWatch.disableAlarmActions(
+            cloudWatch(DisableAlarmActions(
                 AlarmNames = listOf(alarmName),
-            )
-            val compositeAlarmsWithDisabledActions = cloudWatch.describeAlarms(
-                AlarmTypes = listOf(AlarmType.COMPOSITE_ALARM)
-            ).successValue().CompositeAlarms
+            ))
+            val compositeAlarmsWithDisabledActions = cloudWatch(DescribeAlarms(
+                AlarmTypes = listOf(AlarmType.CompositeAlarm)
+            )).successValue().CompositeAlarms
             assertNotNull(compositeAlarmsWithDisabledActions)
             assertThat(compositeAlarmsWithDisabledActions, hasSize(equalTo(1)))
             assertThat(compositeAlarmsWithDisabledActions.first().AlarmName, equalTo(alarmName))
             assertThat(compositeAlarmsWithDisabledActions.first().ActionsEnabled, equalTo(false))
         } finally {
-            cloudWatch.deleteAlarms(
+            cloudWatch(DeleteAlarms(
                 AlarmNames = listOf(alarmName),
-            )
+            ))
             assertThat(
-                cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
-                ).successValue().MetricAlarms.orEmpty(),
+                cloudWatch(DescribeAlarms(
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
+                )).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
         }
@@ -126,7 +136,7 @@ interface CloudWatchContract : AwsContract {
     @Test
     fun `alarm tags lifecycle`() {
         val alarmName = AlarmName.of("http4k-connect-test-alarm")
-        cloudWatch.putMetricAlarm(
+        cloudWatch(PutMetricAlarm(
             AlarmName = alarmName,
             AlarmDescription = "Alarm for testing purposes",
             ComparisonOperator = ComparisonOperator.GreaterThanThreshold,
@@ -137,37 +147,36 @@ interface CloudWatchContract : AwsContract {
             Namespace = Namespace.of("http4k-connect-test-alarms"),
             Period = 60,
             Threshold = 1.0,
-        )
+        )).successValue()
+
         try {
-            val metricAlarms = cloudWatch.describeAlarms(AlarmNames = listOf(alarmName)).successValue().MetricAlarms
-            assertNotNull(metricAlarms)
-            val metricAlarm = metricAlarms.first()
+            val metricAlarm = cloudWatch.waitForMetricAlarmCreation(alarmName)
             val alarmArn = metricAlarm.AlarmArn
-            cloudWatch.tagResource(
+            cloudWatch(TagResource(
                 ResourceARN = alarmArn,
                 Tags = listOf(
                     Tag("http4k-connect-test-tag-key-1", "http4k-connect-test-tag-value-1"),
                     Tag("http4k-connect-test-tag-key-2", "http4k-connect-test-tag-value-2"),
                 )
-            )
-            val listedTags = cloudWatch.listTagsForResource(
+            ))
+            val listedTags = cloudWatch(ListTagsForResource(
                 ResourceARN = alarmArn,
-            ).successValue()
+            )).successValue()
             assertThat(
-                listedTags.Tags, equalTo(
+                listedTags.Tags.sortedBy { it.Key }, equalTo(
                     listOf(
                         Tag("http4k-connect-test-tag-key-1", "http4k-connect-test-tag-value-1"),
                         Tag("http4k-connect-test-tag-key-2", "http4k-connect-test-tag-value-2"),
                     )
                 )
             )
-            cloudWatch.untagResource(
+            cloudWatch(UntagResource(
                 ResourceARN = alarmArn,
                 TagKeys = listOf("http4k-connect-test-tag-key-1")
-            )
-            val reducedListedTags = cloudWatch.listTagsForResource(
+            ))
+            val reducedListedTags = cloudWatch(ListTagsForResource(
                 ResourceARN = alarmArn,
-            ).successValue()
+            )).successValue()
             assertThat(
                 reducedListedTags.Tags, equalTo(
                     listOf(
@@ -176,13 +185,13 @@ interface CloudWatchContract : AwsContract {
                 )
             )
         } finally {
-            cloudWatch.deleteAlarms(
+            cloudWatch(DeleteAlarms(
                 AlarmNames = listOf(alarmName),
-            )
+            ))
             assertThat(
-                cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
-                ).successValue().MetricAlarms.orEmpty(),
+                cloudWatch(DescribeAlarms(
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
+                )).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
         }
@@ -193,22 +202,23 @@ interface CloudWatchContract : AwsContract {
         val namespace = Namespace.of("http4k-connect-test-namespace")
         val metricName = MetricName.of("http4k-connect-test-metric-name")
         val timestamp = Instant.now()
-        cloudWatch.putMetricData(
+        cloudWatch(PutMetricData(
             Namespace = namespace,
             EntityMetricData = null,
             MetricData = listOf(
                 MetricDatum(
                     MetricName = metricName,
-                    Timestamp = timestamp,
+                    Timestamp = Timestamp.of(timestamp),
                     Unit = MetricUnit.Count_per_Second,
-                    Value = 1.0,
                     Values = listOf(0.5, 1.0),
                     StorageResolution = 60,
                 ),
             ),
             StrictEntityValidation = null,
-        )
-        cloudWatch.getMetricData(
+        )).successValue()
+        cloudWatch.waitForMetricCreation(namespace, metricName)
+
+        cloudWatch(GetMetricData(
             MetricDataQueries = listOf(
                 MetricDataQuery(
                     Id = "http4k_connect_test_metric_data_query_id",
@@ -218,30 +228,31 @@ interface CloudWatchContract : AwsContract {
                             Namespace = namespace,
                         ),
                         Stat = "Maximum",
+                        Period = 60,
                         Unit = MetricUnit.Count_per_Second,
                     )
                 )
             ),
-            StartTime = timestamp.minusSeconds(120),
-            EndTime = timestamp.plusSeconds(60),
-        ).successValue()
-        val metricsList = cloudWatch.listMetrics(
+            StartTime = Timestamp.of(timestamp.minusSeconds(120)),
+            EndTime = Timestamp.of(timestamp.plusSeconds(60)),
+        )).successValue()
+        val metricsList = cloudWatch(ListMetrics(
             MetricName = metricName,
             Namespace = namespace,
-        ).successValue()
+        )).successValue()
         assertThat(metricsList.Metrics, hasSize(equalTo(1)))
         val metric = metricsList.Metrics.first()
         assertThat(metric.MetricName, equalTo(metricName))
         assertThat(metric.Namespace, equalTo(namespace))
-        val metricStatistics = cloudWatch.getMetricStatistics(
+        val metricStatistics = cloudWatch.waitForMetricStatistics(
             MetricName = metricName,
             Namespace = namespace,
-            StartTime = timestamp.minusSeconds(120),
-            EndTime = timestamp.plusSeconds(60),
+            StartTime = Timestamp.of(timestamp.minusSeconds(120)),
+            EndTime = Timestamp.of(timestamp.plusSeconds(60)),
             Period = 60,
             Unit = MetricUnit.Count_per_Second,
-        ).successValue()
-        assertThat(metricStatistics.Datapoints, hasSize(greaterThan(0)))
-        assertThat(metricStatistics.Datapoints.first().Maximum, equalTo(1.0))
+            Statistics = listOf(Statistic.Maximum)
+        )
+        assertThat(metricStatistics.first().Maximum, equalTo(1.0))
     }
 }

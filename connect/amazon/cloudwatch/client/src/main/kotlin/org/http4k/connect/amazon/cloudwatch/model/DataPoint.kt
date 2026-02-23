@@ -1,7 +1,7 @@
 package org.http4k.connect.amazon.cloudwatch.model
 
+import org.http4k.connect.model.Timestamp
 import se.ansman.kotshi.JsonSerializable
-import java.time.Instant
 
 @JsonSerializable
 data class DataPoint(
@@ -11,6 +11,6 @@ data class DataPoint(
     val Minimum: Double? = null,
     val SampleCount: Double? = null,
     val Sum: Double? = null,
-    val Timestamp: Instant? = null,
+    val Timestamp: Timestamp? = null,
     val Unit: MetricUnit? = null,
 )

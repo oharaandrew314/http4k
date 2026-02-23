@@ -29,6 +29,7 @@ import org.http4k.connect.amazon.cloudwatch.model.Namespace
 import org.http4k.connect.amazon.cloudwatch.model.NextToken
 import org.http4k.connect.amazon.core.model.AwsAccount
 import org.http4k.connect.amazon.core.model.Region
+import org.http4k.connect.model.Timestamp
 import org.http4k.connect.storage.Storage
 import org.http4k.connect.storage.getOrPut
 import java.time.Clock
@@ -80,7 +81,7 @@ fun AwsJsonFake.describeAlarms(alarms: Storage<Alarm>) = route<DescribeAlarms> {
     val (metricAlarms, compositeAlarms) = when (nextToken) {
         null -> filteredAlarms.take(maxRecords)
         else -> filteredAlarms.drop(maxRecords * nextToken).take(maxRecords)
-    }.partition { it.AlarmType == AlarmType.METRIC_ALARM }
+    }.partition { it.AlarmType == AlarmType.MetricAlarm }
     val nextNextToken = when {
         filteredAlarms.isEmpty() -> null
         filteredAlarms.last() == metricAlarms.lastOrNull() -> null
@@ -100,7 +101,7 @@ fun AwsJsonFake.describeAlarmsForMetric(alarms: Storage<Alarm>) = route<Describe
         return@route JsonError("invalid parameter value", "Dimensions must not be specified or have between 1 and 30 elements. Found ${it.Dimensions!!.size} elements")
     }
     alarms.keySet("").mapNotNull { alarms[it] }
-        .filterAlarmsByAlarmTypes(listOf(AlarmType.METRIC_ALARM))
+        .filterAlarmsByAlarmTypes(listOf(AlarmType.MetricAlarm))
         .filterAlarmsByMetricName(it.MetricName)
         .filterAlarmsByNamespace(it.Namespace)
         .filterAlarmsByDimensions(it.Dimensions?.toSet())
@@ -174,7 +175,7 @@ fun AwsJsonFake.getMetricData(metrics: Storage<MutableList<MetricDatum>>) = rout
     if (it.MetricDataQueries.size !in 1..500) {
         return@route JsonError("invalid parameter value", "You must provide at least 1 and at most 500 MetricDataQuery entries. Found ${it.MetricDataQueries.size}")
     }
-    if (it.EndTime.isBefore(it.StartTime)) {
+    if (it.EndTime.toInstant().isBefore(it.StartTime.toInstant())) {
         return@route JsonError("invalid parameter value", "EndTime cannot be before StartTime")
     }
     val nextToken = try {
@@ -183,7 +184,7 @@ fun AwsJsonFake.getMetricData(metrics: Storage<MutableList<MetricDatum>>) = rout
         return@route JsonError("invalid parameter value", "Invalid NextToken provided: ${it.NextToken}")
     }
     val metricData = metrics.keySet("").mapNotNull { metrics[it] }.flatten()
-        .filter { metric -> metric.Timestamp!! in it.EndTime..it.StartTime }
+        .filter { metric -> metric.Timestamp!!.toInstant() in it.EndTime.toInstant()..it.StartTime.toInstant() }
         .sortedMetricDataByScanBy(it.ScanBy)
     if (nextToken != null && (maxDataPoints * nextToken !in 1..<metricData.size)) {
         return@route JsonError("invalid parameter value", "Invalid NextToken provided: ${it.NextToken}")
@@ -212,7 +213,7 @@ fun AwsJsonFake.getMetricStatistics(metrics: Storage<MutableList<MetricDatum>>) 
     val metricData = metrics[it.Namespace.value]?.filter { metric -> metric.MetricName == it.MetricName }
         ?.filterMetricDataByUnit(it.Unit)
         ?.filter { metric -> it.Dimensions == null || it.Dimensions!!.toSet() == metric.Dimensions!!.toSet() }
-        ?.filter { metric -> metric.Timestamp!! in it.StartTime..<it.EndTime }
+        ?.filter { metric -> metric.Timestamp!!.toInstant() in it.StartTime.toInstant()..<it.EndTime.toInstant() }
     MetricStatistics(
         Datapoints = metricData?.map { it.toDataPoint() }.orEmpty(),
         Label = null,
@@ -271,7 +272,7 @@ fun AwsJsonFake.putMetricData(metrics: Storage<MutableList<MetricDatum>>, clock:
     val metricData = it.EntityMetricData.orEmpty()
         .flatMap { it.MetricData.orEmpty() }
         .plus(it.MetricData.orEmpty())
-        .map { it.copy(Timestamp = it.Timestamp ?: clock.instant()) }
+        .map { it.copy(Timestamp = it.Timestamp ?: Timestamp.of(clock.instant())) }
     if (metricData.size !in 1..1000) {
         return@route JsonError("invalid parameter value", "Total metric data size must be between one and 1000. Found ${metricData.size}")
     }

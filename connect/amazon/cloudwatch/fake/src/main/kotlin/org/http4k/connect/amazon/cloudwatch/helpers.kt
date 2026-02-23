@@ -26,6 +26,7 @@ import org.http4k.connect.amazon.core.model.ARN
 import org.http4k.connect.amazon.core.model.AwsAccount
 import org.http4k.connect.amazon.core.model.Region
 import org.http4k.connect.amazon.core.model.Tag
+import org.http4k.connect.model.Timestamp
 import java.time.Instant
 import java.util.Collections.nCopies
 
@@ -87,7 +88,7 @@ fun Alarm.toCompositeAlarm(): CompositeAlarm {
         ActionsSuppressorWaitPeriod = ActionsSuppressorWaitPeriod,
         AlarmActions = AlarmActions,
         AlarmArn = AlarmArn,
-        AlarmConfigurationUpdatedTimestamp = LastUpdate,
+        AlarmConfigurationUpdatedTimestamp = Timestamp.of(LastUpdate),
         AlarmDescription = AlarmDescription,
         AlarmName = AlarmName,
         AlarmRule = AlarmRule,
@@ -95,8 +96,8 @@ fun Alarm.toCompositeAlarm(): CompositeAlarm {
         OKActions = OKActions,
         StateReason = StateReason,
         StateReasonData = StateReasonData,
-        StateTransitionedTimestamp = LastStateTransitionTimestamp,
-        StateUpdatedTimestamp = LastStateUpdateTimestamp,
+        StateTransitionedTimestamp = Timestamp.of(LastStateTransitionTimestamp),
+        StateUpdatedTimestamp = Timestamp.of(LastStateUpdateTimestamp),
         StateValue = State,
     )
 }
@@ -129,7 +130,7 @@ fun PutCompositeAlarm.toAlarm(previous: Alarm?, region: Region, awsAccount: AwsA
     ActionsSuppressor = ActionsSuppressor,
     ActionsSuppressorExtensionPeriod = ActionsSuppressorExtensionPeriod,
     ActionsSuppressorWaitPeriod = ActionsSuppressorWaitPeriod,
-    AlarmType = AlarmType.COMPOSITE_ALARM,
+    AlarmType = AlarmType.CompositeAlarm,
     LastUpdate = now,
     LastStateTransitionTimestamp = previous?.LastStateTransitionTimestamp ?: now,
     LastStateUpdateTimestamp = previous?.LastStateUpdateTimestamp ?: now,
@@ -145,7 +146,7 @@ fun Alarm.toMetricAlarm(): MetricAlarm {
         ComparisonOperator = ComparisonOperator!!,
         ActionsEnabled = ActionsEnabled,
         AlarmActions = AlarmActions,
-        AlarmConfigurationUpdatedTimestamp = LastUpdate,
+        AlarmConfigurationUpdatedTimestamp = Timestamp.of(LastUpdate),
         AlarmDescription = AlarmDescription,
         DataPointsToAlarm = DatapointsToAlarm,
         Dimensions = Dimensions,
@@ -161,8 +162,8 @@ fun Alarm.toMetricAlarm(): MetricAlarm {
         Period = Period,
         StateReason = StateReason,
         StateReasonData = StateReasonData,
-        StateTransitionedTimestamp = LastStateTransitionTimestamp,
-        StateUpdatedTimestamp = LastStateUpdateTimestamp,
+        StateTransitionedTimestamp = Timestamp.of(LastStateTransitionTimestamp),
+        StateUpdatedTimestamp = Timestamp.of(LastStateUpdateTimestamp),
         StateValue = State,
         Statistic = Statistic,
         Threshold = Threshold,
@@ -206,7 +207,7 @@ fun PutMetricAlarm.toAlarm(previous: Alarm?, region: Region, awsAccount: AwsAcco
     ActionsSuppressor = null,
     ActionsSuppressorExtensionPeriod = null,
     ActionsSuppressorWaitPeriod = null,
-    AlarmType = AlarmType.METRIC_ALARM,
+    AlarmType = AlarmType.MetricAlarm,
     LastUpdate = now,
     LastStateTransitionTimestamp = previous?.LastStateTransitionTimestamp ?: now,
     LastStateUpdateTimestamp = previous?.LastStateUpdateTimestamp ?: now,
@@ -261,8 +262,8 @@ fun List<MetricDatum>.filterMetricDataByUnit(unit: MetricUnit?) = if (unit == nu
     filter { it.Unit == unit }
 
 fun List<MetricDatum>.sortedMetricDataByScanBy(scanBy: ScanBy?) = when (scanBy) {
-    null, ScanBy.TimestampDescending -> sortedByDescending { it.Timestamp!! }
-    ScanBy.TimestampAscending -> sortedBy { it.Timestamp!!}
+    null, ScanBy.TimestampDescending -> sortedByDescending { it.Timestamp!!.toInstant() }
+    ScanBy.TimestampAscending -> sortedBy { it.Timestamp!!.toInstant() }
 }
 
 fun MetricDatum.toMetric(namespace: Namespace): Metric {
@@ -295,7 +296,7 @@ fun MetricDatum.with(other: MetricDatum, now: Instant): MetricDatum {
     return copy(
         Counts = newCounts,
         Dimensions = newDimensions.takeIf { it.isNotEmpty() }?.entries?.map { Dimension(it.key, it.value) },
-        Timestamp = now,
+        Timestamp = org.http4k.connect.model.Timestamp.of(now),
         Value = other.Value,
         Values = newValues,
     )

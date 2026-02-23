@@ -6,6 +6,6 @@ import se.ansman.kotshi.JsonSerializable
 data class MetricStat(
     val Metric: Metric,
     val Stat: String,
-    val Period: Int? = null,
+    val Period: Int,
     val Unit: MetricUnit? = null,
 )

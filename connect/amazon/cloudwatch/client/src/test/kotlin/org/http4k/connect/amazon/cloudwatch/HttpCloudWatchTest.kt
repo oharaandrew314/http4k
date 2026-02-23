@@ -4,6 +4,7 @@ import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.present
 import org.http4k.connect.amazon.CredentialsProvider
 import org.http4k.connect.amazon.FakeAwsEnvironment
+import org.http4k.connect.amazon.cloudwatch.action.ListMetrics
 import org.http4k.connect.amazon.core.model.Region
 import org.http4k.core.MockHttp
 import org.http4k.core.Uri
@@ -36,7 +37,7 @@ class HttpCloudWatchTest {
 
         // when
         runCatching {
-            cloudWatch.listMetrics()
+            cloudWatch(ListMetrics())
         }
 
         // then

@@ -5,6 +5,7 @@ import org.http4k.connect.RemoteFailure
 import org.http4k.connect.amazon.cloudwatch.CloudWatch
 import org.http4k.connect.amazon.cloudwatch.FakeCloudWatch
 import org.http4k.connect.amazon.cloudwatch.Http
+import org.http4k.connect.amazon.cloudwatch.action.ListMetrics
 import org.http4k.connect.amazon.cloudwatch.action.Metrics
 import org.http4k.connect.amazon.cloudwatch.listMetrics
 import org.http4k.connect.amazon.cloudwatch.model.Namespace
@@ -23,9 +24,9 @@ fun main() {
         CloudWatch.Http(Region.US_EAST_1, { AwsCredentials("accessKeyId", "secretKey") }, http.debug())
 
     // all operations return a Result monad of the API type
-    val result: Result<Metrics, RemoteFailure> = cloudWatch.listMetrics(
+    val result: Result<Metrics, RemoteFailure> = cloudWatch(ListMetrics(
         Namespace = Namespace.of("foobar"),
-    )
+    ))
 
     println(result)
 }

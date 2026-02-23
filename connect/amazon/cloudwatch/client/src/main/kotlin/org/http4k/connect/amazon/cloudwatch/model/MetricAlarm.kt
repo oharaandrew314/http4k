@@ -1,8 +1,8 @@
 package org.http4k.connect.amazon.cloudwatch.model
 
 import org.http4k.connect.amazon.core.model.ARN
+import org.http4k.connect.model.Timestamp
 import se.ansman.kotshi.JsonSerializable
-import java.time.Instant
 
 @JsonSerializable
 data class MetricAlarm(
@@ -11,7 +11,7 @@ data class MetricAlarm(
     val ComparisonOperator: ComparisonOperator,
     val ActionsEnabled: Boolean? = null,
     val AlarmActions: List<ARN>? = null,
-    val AlarmConfigurationUpdatedTimestamp: Instant? = null,
+    val AlarmConfigurationUpdatedTimestamp: Timestamp? = null,
     val AlarmDescription: String? = null,
     val DataPointsToAlarm: Int? = null,
     val Dimensions: List<Dimension>? = null,
@@ -27,8 +27,8 @@ data class MetricAlarm(
     val Period: Int? = null,
     val StateReason: String? = null,
     val StateReasonData: String? = null,
-    val StateTransitionedTimestamp: Instant? = null,
-    val StateUpdatedTimestamp: Instant? = null,
+    val StateTransitionedTimestamp: Timestamp? = null,
+    val StateUpdatedTimestamp: Timestamp? = null,
     val StateValue: AlarmState,
     val Statistic: Statistic? = null,
     val Threshold: Double? = null,

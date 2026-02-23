@@ -1,8 +1,8 @@
 package org.http4k.connect.amazon.cloudwatch.model
 
 import org.http4k.connect.amazon.core.model.ARN
+import org.http4k.connect.model.Timestamp
 import se.ansman.kotshi.JsonSerializable
-import java.time.Instant
 
 @JsonSerializable
 data class CompositeAlarm(
@@ -14,7 +14,7 @@ data class CompositeAlarm(
     val ActionsSuppressorWaitPeriod: Int? = null,
     val AlarmActions: List<ARN>? = null,
     val AlarmArn: ARN? = null,
-    val AlarmConfigurationUpdatedTimestamp: Instant? = null,
+    val AlarmConfigurationUpdatedTimestamp: Timestamp? = null,
     val AlarmDescription: String? = null,
     val AlarmName: AlarmName? = null,
     val AlarmRule: String? = null,
@@ -22,7 +22,7 @@ data class CompositeAlarm(
     val OKActions: List<ARN>? = null,
     val StateReason: String? = null,
     val StateReasonData: String? = null,
-    val StateTransitionedTimestamp: Instant? = null,
-    val StateUpdatedTimestamp: Instant? = null,
+    val StateTransitionedTimestamp: Timestamp? = null,
+    val StateUpdatedTimestamp: Timestamp? = null,
     val StateValue: AlarmState,
 )

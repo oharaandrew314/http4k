@@ -9,16 +9,16 @@ import org.http4k.connect.amazon.cloudwatch.model.MetricName
 import org.http4k.connect.amazon.cloudwatch.model.MetricUnit
 import org.http4k.connect.amazon.cloudwatch.model.Namespace
 import org.http4k.connect.amazon.cloudwatch.model.Statistic
+import org.http4k.connect.model.Timestamp
 import se.ansman.kotshi.JsonSerializable
-import java.time.Instant
 
 @Http4kConnectAction
 @JsonSerializable
 data class GetMetricStatistics(
     val MetricName: MetricName,
     val Namespace: Namespace,
-    val StartTime: Instant,
-    val EndTime: Instant,
+    val StartTime: Timestamp,
+    val EndTime: Timestamp,
     val Period: Int,
     val Dimensions: List<Dimension>? = null,
     val ExtendedStatistics: List<PercentileExtendedStatistic>? = null,
