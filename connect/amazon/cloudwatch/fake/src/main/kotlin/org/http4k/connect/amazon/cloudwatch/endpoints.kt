@@ -80,7 +80,7 @@ fun AwsJsonFake.describeAlarms(alarms: Storage<Alarm>) = route<DescribeAlarms> {
     val (metricAlarms, compositeAlarms) = when (nextToken) {
         null -> filteredAlarms.take(maxRecords)
         else -> filteredAlarms.drop(maxRecords * nextToken).take(maxRecords)
-    }.partition { it.AlarmType == AlarmType.METRIC_ALARM }
+    }.partition { it.AlarmType == AlarmType.MetricAlarm }
     val nextNextToken = when {
         filteredAlarms.isEmpty() -> null
         filteredAlarms.last() == metricAlarms.lastOrNull() -> null
@@ -100,7 +100,7 @@ fun AwsJsonFake.describeAlarmsForMetric(alarms: Storage<Alarm>) = route<Describe
         return@route JsonError("invalid parameter value", "Dimensions must not be specified or have between 1 and 30 elements. Found ${it.Dimensions!!.size} elements")
     }
     alarms.keySet("").mapNotNull { alarms[it] }
-        .filterAlarmsByAlarmTypes(listOf(AlarmType.METRIC_ALARM))
+        .filterAlarmsByAlarmTypes(listOf(AlarmType.MetricAlarm))
         .filterAlarmsByMetricName(it.MetricName)
         .filterAlarmsByNamespace(it.Namespace)
         .filterAlarmsByDimensions(it.Dimensions?.toSet())
@@ -174,7 +174,7 @@ fun AwsJsonFake.getMetricData(metrics: Storage<MutableList<MetricDatum>>) = rout
     if (it.MetricDataQueries.size !in 1..500) {
         return@route JsonError("invalid parameter value", "You must provide at least 1 and at most 500 MetricDataQuery entries. Found ${it.MetricDataQueries.size}")
     }
-    if (it.EndTime.isBefore(it.StartTime)) {
+    if (it.EndTime.toInstant().isBefore(it.StartTime.toInstant())) {
         return@route JsonError("invalid parameter value", "EndTime cannot be before StartTime")
     }
     val nextToken = try {
@@ -183,7 +183,7 @@ fun AwsJsonFake.getMetricData(metrics: Storage<MutableList<MetricDatum>>) = rout
         return@route JsonError("invalid parameter value", "Invalid NextToken provided: ${it.NextToken}")
     }
     val metricData = metrics.keySet("").mapNotNull { metrics[it] }.flatten()
-        .filter { metric -> metric.Timestamp!! in it.EndTime..it.StartTime }
+        .filter { metric -> metric.Timestamp!! in it.StartTime.toInstant()..it.EndTime.toInstant() }
         .sortedMetricDataByScanBy(it.ScanBy)
     if (nextToken != null && (maxDataPoints * nextToken !in 1..<metricData.size)) {
         return@route JsonError("invalid parameter value", "Invalid NextToken provided: ${it.NextToken}")
@@ -290,7 +290,9 @@ fun AwsJsonFake.putMetricData(metrics: Storage<MutableList<MetricDatum>>, clock:
         if (metricDatum.Values != null && metricDatum.Values!!.size > 150) {
             return@route JsonError("invalid parameter value", "A metric can have at most 150 new values associated with it in a put request. Found ${metricDatum.Values!!.size} values for metric ${metricDatum.MetricName}")
         }
-        val existingMetricWithIndex = metricList.withIndex().find { (_, m) -> m.MetricName == metricDatum.MetricName }
+        val existingMetricWithIndex = metricList.withIndex().find { (_, m) ->
+            m.MetricName == metricDatum.MetricName && DimensionsComparator.compare(m.Dimensions, metricDatum.Dimensions) == 0
+        }
         when (existingMetricWithIndex) {
             null -> metricList.add(metricDatum)
             else -> {

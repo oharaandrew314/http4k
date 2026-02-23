@@ -19,6 +19,7 @@ import org.http4k.connect.amazon.cloudwatch.model.MetricUnit
 import org.http4k.connect.amazon.cloudwatch.model.Namespace
 import org.http4k.connect.amazon.cloudwatch.model.Statistic
 import org.http4k.connect.amazon.core.model.Tag
+import org.http4k.connect.model.Timestamp
 import org.http4k.connect.successValue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
@@ -71,7 +72,7 @@ interface CloudWatchContract : AwsContract {
             )
             assertThat(
                 cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
                 ).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
@@ -89,7 +90,7 @@ interface CloudWatchContract : AwsContract {
         )
         try {
             val compositeAlarms = cloudWatch.describeAlarms(
-                AlarmTypes = listOf(AlarmType.COMPOSITE_ALARM)
+                AlarmTypes = listOf(AlarmType.CompositeAlarm)
             ).successValue().CompositeAlarms
             assertNotNull(compositeAlarms)
             assertThat(compositeAlarms, hasSize(equalTo(1)))
@@ -104,7 +105,7 @@ interface CloudWatchContract : AwsContract {
                 AlarmNames = listOf(alarmName),
             )
             val compositeAlarmsWithDisabledActions = cloudWatch.describeAlarms(
-                AlarmTypes = listOf(AlarmType.COMPOSITE_ALARM)
+                AlarmTypes = listOf(AlarmType.CompositeAlarm)
             ).successValue().CompositeAlarms
             assertNotNull(compositeAlarmsWithDisabledActions)
             assertThat(compositeAlarmsWithDisabledActions, hasSize(equalTo(1)))
@@ -116,7 +117,7 @@ interface CloudWatchContract : AwsContract {
             )
             assertThat(
                 cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
                 ).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
@@ -181,7 +182,7 @@ interface CloudWatchContract : AwsContract {
             )
             assertThat(
                 cloudWatch.describeAlarms(
-                    AlarmTypes = listOf(AlarmType.METRIC_ALARM, AlarmType.COMPOSITE_ALARM)
+                    AlarmTypes = listOf(AlarmType.MetricAlarm, AlarmType.CompositeAlarm)
                 ).successValue().MetricAlarms.orEmpty(),
                 isEmpty,
             )
@@ -222,9 +223,10 @@ interface CloudWatchContract : AwsContract {
                     )
                 )
             ),
-            StartTime = timestamp.minusSeconds(120),
-            EndTime = timestamp.plusSeconds(60),
-        ).successValue()
+            StartTime = Timestamp.of(timestamp.minusSeconds(120)),
+            EndTime = Timestamp.of(timestamp.plusSeconds(60)),
+        ).successValue() // can't verify contents against real cloudwatch due to eventual concistency
+
         val metricsList = cloudWatch.listMetrics(
             MetricName = metricName,
             Namespace = namespace,

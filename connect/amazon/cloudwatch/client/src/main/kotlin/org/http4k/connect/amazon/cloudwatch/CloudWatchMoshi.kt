@@ -7,6 +7,7 @@ import org.http4k.connect.amazon.cloudwatch.model.PercentileExtendedStatistic
 import org.http4k.connect.amazon.cloudwatch.model.MetricName
 import org.http4k.connect.amazon.cloudwatch.model.Namespace
 import org.http4k.connect.amazon.cloudwatch.model.NextToken
+import org.http4k.connect.model.Timestamp
 import org.http4k.format.AwsMoshiBuilder
 import org.http4k.format.ConfigurableMoshi
 import org.http4k.format.value
@@ -20,6 +21,7 @@ object CloudWatchMoshi : ConfigurableMoshi(
         .value(PercentileExtendedStatistic)
         .value(Namespace)
         .value(NextToken)
+        .value(Timestamp)
         .done()
 )
 

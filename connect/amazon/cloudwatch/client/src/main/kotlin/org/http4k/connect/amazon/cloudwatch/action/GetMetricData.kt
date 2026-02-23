@@ -8,15 +8,15 @@ import org.http4k.connect.amazon.cloudwatch.model.MetricDataQuery
 import org.http4k.connect.amazon.cloudwatch.model.MetricDataResult
 import org.http4k.connect.amazon.cloudwatch.model.NextToken
 import org.http4k.connect.amazon.cloudwatch.model.ScanBy
+import org.http4k.connect.model.Timestamp
 import se.ansman.kotshi.JsonSerializable
-import java.time.Instant
 
 @Http4kConnectAction
 @JsonSerializable
 data class GetMetricData(
     val MetricDataQueries: List<MetricDataQuery>,
-    val StartTime: Instant,
-    val EndTime: Instant,
+    val StartTime: Timestamp,
+    val EndTime: Timestamp,
     val NextToken: NextToken? = null,
     val ScanBy: ScanBy? = null,
     val MaxDataPoints: Int? = null,

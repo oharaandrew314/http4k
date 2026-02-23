@@ -129,7 +129,7 @@ fun PutCompositeAlarm.toAlarm(previous: Alarm?, region: Region, awsAccount: AwsA
     ActionsSuppressor = ActionsSuppressor,
     ActionsSuppressorExtensionPeriod = ActionsSuppressorExtensionPeriod,
     ActionsSuppressorWaitPeriod = ActionsSuppressorWaitPeriod,
-    AlarmType = AlarmType.COMPOSITE_ALARM,
+    AlarmType = AlarmType.CompositeAlarm,
     LastUpdate = now,
     LastStateTransitionTimestamp = previous?.LastStateTransitionTimestamp ?: now,
     LastStateUpdateTimestamp = previous?.LastStateUpdateTimestamp ?: now,
@@ -206,7 +206,7 @@ fun PutMetricAlarm.toAlarm(previous: Alarm?, region: Region, awsAccount: AwsAcco
     ActionsSuppressor = null,
     ActionsSuppressorExtensionPeriod = null,
     ActionsSuppressorWaitPeriod = null,
-    AlarmType = AlarmType.METRIC_ALARM,
+    AlarmType = AlarmType.MetricAlarm,
     LastUpdate = now,
     LastStateTransitionTimestamp = previous?.LastStateTransitionTimestamp ?: now,
     LastStateUpdateTimestamp = previous?.LastStateUpdateTimestamp ?: now,
@@ -315,4 +315,15 @@ fun Alarm.withoutTags(tagKeys: Set<String>, now: Instant): Alarm {
         Tags = Tags?.filter { it.Key !in tagKeys }?.takeIf { it.isNotEmpty() },
         LastUpdate = now
     )
+}
+
+/**
+ * Order doesn't matter
+ */
+object DimensionsComparator : Comparator<List<Dimension>?> {
+    override fun compare(o1: List<Dimension>?, o2: List<Dimension>?): Int {
+        val s1 = o1.orEmpty().sortedBy { it.Name }.joinToString(",") { "${it.Name}=${it.Value}" }
+        val s2 = o2.orEmpty().sortedBy { it.Name }.joinToString(",") { "${it.Name}=${it.Value}" }
+        return s1.compareTo(s2)
+    }
 }

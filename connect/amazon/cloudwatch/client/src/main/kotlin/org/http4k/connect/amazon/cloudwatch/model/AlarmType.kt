@@ -4,6 +4,6 @@ import se.ansman.kotshi.JsonSerializable
 
 @JsonSerializable
 enum class AlarmType {
-    COMPOSITE_ALARM,
-    METRIC_ALARM,
+    CompositeAlarm,
+    MetricAlarm,
 }
