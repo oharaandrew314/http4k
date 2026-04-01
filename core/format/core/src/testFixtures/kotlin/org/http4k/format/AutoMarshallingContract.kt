@@ -123,7 +123,7 @@ abstract class AutoMarshallingContract(private val marshaller: AutoMarshalling) 
     protected val expectedCustomBoolean = "true"
     protected val expectedCustomDecimal = "1.01"
 
-    val obj = ArbObject("hello", ArbObject("world", null, listOf(1), true), emptyList(), false)
+    open val obj = ArbObject("hello", ArbObject("world", null, listOf(1), true), emptyList(), false)
 
     @Test
     open fun `roundtrip arbitrary object to and from string`() {
